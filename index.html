@@ -35,23 +35,13 @@
       margin-bottom: 10px;
     }
 
-    .btn-container {
-      margin: 20px;
-    }
+    .btn-container { margin: 20px; }
 
     button {
-      background-color: #4EA8DE;
-      color: #ffffff;
-      border: 3px solid #333333;
-      padding: 18px 35px;
-      font-size: 22px;
-      font-weight: bold;
-      cursor: pointer;
-      border-radius: 50px;
-      margin: 0 15px;
-      box-shadow: 0px 8px 0px #333333;
-      transition: all 0.1s ease;
-      outline: none;
+      background-color: #4EA8DE; color: #ffffff; border: 3px solid #333333;
+      padding: 18px 35px; font-size: 22px; font-weight: bold; cursor: pointer;
+      border-radius: 50px; margin: 0 15px; box-shadow: 0px 8px 0px #333333;
+      transition: all 0.1s ease; outline: none;
     }
 
     .btn-ranking { background-color: #06D6A0; }
@@ -59,61 +49,48 @@
     button:active { transform: translateY(6px); box-shadow: 0px 2px 0px #333333; }
 
     #response-area {
-      margin-top: 20px;
-      padding: 25px;
-      border: 3px solid #333333;
-      border-radius: 20px;
-      width: 80%;
-      max-width: 550px;
-      min-height: 60px;
-      text-align: center;
-      background-color: #ffffff;
-      box-shadow: 6px 6px 0px #FFD166;
-      font-size: 20px;
-      font-weight: bold;
-      white-space: pre-wrap;
+      margin-top: 20px; padding: 25px; border: 3px solid #333333; border-radius: 20px;
+      width: 80%; max-width: 550px; min-height: 60px; text-align: center;
+      background-color: #ffffff; box-shadow: 6px 6px 0px #FFD166; font-size: 20px;
+      font-weight: bold; white-space: pre-wrap;
     }
 
-    #status-text { display: inline-block; padding: 5px 15px; border-radius: 10px; }
     #menu-screen { display: flex; flex-direction: column; align-items: center; width: 100%; }
 
     #debate-screen {
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      width: 90%;
-      max-width: 500px;
-      height: 75vh;
-      border: 3px solid #333333;
-      border-radius: 20px;
-      background-color: #7593B1;
-      padding: 15px;
-      box-shadow: 6px 6px 0px #333333;
+      display: none; flex-direction: column; align-items: center;
+      width: 90%; max-width: 500px; height: 82vh; /* 体力バー追加に伴い縦幅を少し拡大 */
+      border: 3px solid #333333; border-radius: 20px;
+      background-color: #7593B1; padding: 15px; box-shadow: 6px 6px 0px #333333;
       box-sizing: border-box;
     }
 
     #theme-info {
-      width: 100%;
-      background-color: #FF7096;
-      border: 2px solid #333333;
-      border-radius: 12px;
-      padding: 8px;
-      text-align: center;
-      color: white;
-      font-weight: bold;
-      margin-bottom: 10px;
-      box-sizing: border-box;
+      width: 100%; background-color: #FF7096; border: 2px solid #333333;
+      border-radius: 12px; padding: 8px; text-align: center; color: white;
+      font-weight: bold; margin-bottom: 10px; box-sizing: border-box;
+    }
+
+    /* ✨ 【新機能】格闘ゲーム風の体力メーターコンテナ */
+    #hp-container {
+      width: 100%; background-color: #333333; border: 2px solid #333333;
+      border-radius: 10px; padding: 8px; margin-bottom: 10px;
+      box-sizing: border-box; color: white; font-size: 12px; font-weight: bold;
+    }
+
+    .hp-bar-bg {
+      width: 100%; background-color: #555555; height: 14px;
+      border-radius: 7px; border: 1px solid #111; overflow: hidden; margin-top: 3px;
+    }
+
+    .hp-bar-fill {
+      height: 100%; background-color: #06D6A0; width: 100%;
+      transition: width 0.3s ease; /* ダメージを受けた時に滑らかに減るアニメーション */
     }
 
     #chat-box {
-      width: 100%;
-      flex-grow: 1;
-      overflow-y: auto;
-      margin-bottom: 15px;
-      padding: 10px;
-      box-sizing: border-box;
-      display: flex;
-      flex-direction: column;
+      width: 100%; flex-grow: 1; overflow-y: auto; margin-bottom: 15px;
+      padding: 10px; box-sizing: border-box; display: flex; flex-direction: column;
     }
 
     .message-row { display: flex; flex-direction: column; width: 100%; margin: 6px 0; }
@@ -122,14 +99,8 @@
     .sender-name { font-size: 12px; color: #EEEEEE; font-weight: bold; margin-bottom: 2px; text-shadow: 1px 1px 1px #333333; }
 
     .bubble {
-      max-width: 75%;
-      padding: 10px 15px;
-      border-radius: 15px;
-      font-size: 16px;
-      font-weight: bold;
-      line-height: 1.4;
-      word-wrap: break-word;
-      border: 2px solid #333333;
+      max-width: 75%; padding: 10px 15px; border-radius: 15px; font-size: 16px;
+      font-weight: bold; line-height: 1.4; word-wrap: break-word; border: 2px solid #333333;
     }
 
     .my-message .bubble { background-color: #85E245; color: #333333; border-radius: 15px 15px 0px 15px; }
@@ -137,33 +108,17 @@
     .chat-input-container { display: flex; width: 100%; }
 
     #message-input {
-      flex-grow: 1;
-      padding: 12px;
-      font-size: 16px;
-      border: 3px solid #333333;
-      border-radius: 15px 0 0 15px;
-      outline: none;
+      flex-grow: 1; padding: 12px; font-size: 16px; border: 3px solid #333333;
+      border-radius: 15px 0 0 15px; outline: none;
     }
 
     #send-btn {
-      padding: 12px 25px;
-      font-size: 16px;
-      background-color: #FFD166;
-      color: #333333;
-      border: 3px solid #333333;
-      border-left: none;
-      border-radius: 0 15px 15px 0;
-      cursor: pointer;
-      font-weight: bold;
-      margin: 0;
-      box-shadow: none;
+      padding: 12px 25px; font-size: 16px; background-color: #FFD166;
+      color: #333333; border: 3px solid #333333; border-left: none;
+      border-radius: 0 15px 15px 0; cursor: pointer; font-weight: bold; margin: 0;
     }
 
-    #send-btn:disabled {
-      background-color: #AAAAAA;
-      cursor: not-allowed;
-    }
-
+    #send-btn:disabled { background-color: #AAAAAA; cursor: not-allowed; }
     .btn-back { padding: 6px 15px; font-size: 14px; background-color: #FF477E; box-shadow: 0px 4px 0px #333333; border-radius: 20px; margin: 0; }
   </style>
 </head>
@@ -172,7 +127,6 @@
 <h1 id="game-title">ゆるろん</h1>
 <div id="user-badge">プレイヤー: 読み込み中...</div>
 
-<!-- 🚪 メインメニュー画面 -->
 <div id="menu-screen">
   <div class="btn-container">
     <button onclick="sendRequest('match')">MATCH</button>
@@ -183,18 +137,29 @@
   </div>
 </div>
 
-<!-- 💬 LINE風ディベート対戦画面 -->
 <div id="debate-screen">
   <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 10px;">
     <div id="room-title" style="font-size: 14px; font-weight: bold; color: #FFFFFF;">部屋名: 接続中...</div>
     <button class="btn-back" onclick="goBackToMenu()">戻る</button>
   </div>
 
-  <!-- お題とタイマー表示エリア -->
   <div id="theme-info">
     <div id="current-theme" style="font-size: 18px;">お題: 読み込み中...</div>
-    <!-- 表示を初期状態から3分（180秒）に変更 -->
     <div id="timer-text" style="font-size: 14px; margin-top: 4px; color: #FFD166;">残り秒数: 180秒</div>
+  </div>
+
+  <div id="hp-container">
+    <div style="display: flex; justify-content: space-between;">
+      <div style="width: 46%;">
+        <div id="my-hp-label">あなた: 100</div>
+        <div class="hp-bar-bg"><div id="my-hp-bar" class="hp-bar-fill"></div></div>
+      </div>
+      <div style="font-size: 16px; display: flex; align-items: center; color: #FFD166;">VS</div>
+      <div style="width: 46%; text-align: right;">
+        <div id="enemy-hp-label">相手: 100</div>
+        <div class="hp-bar-bg"><div id="enemy-hp-bar" class="hp-bar-fill"></div></div>
+      </div>
+    </div>
   </div>
 
   <div id="chat-box"></div>
@@ -210,7 +175,8 @@
   let lastMessageCount = 0; 
   let chatIntervalId = null;
   let timerIntervalId = null; 
-  let remainingTime = 180; // ✨ 【ここを変更】制限時間を180秒（3分）に設定！
+  let remainingTime = 180; 
+  let isGameOverFlag = false; // 決着がついたかどうかのフラグ
 
   let myUsername = localStorage.getItem('yururon_username');
   if (!myUsername) {
@@ -245,6 +211,13 @@
                 document.getElementById('room-title').innerText = `対戦部屋: ${myRoomName}`;
                 document.getElementById('current-theme').innerText = `お題：${currentTheme}`;
                 
+                // 体力表記の初期化
+                document.getElementById('my-hp-label').innerText = `${myUsername}: 100`;
+                document.getElementById('enemy-hp-label').innerText = `相手: 100`;
+                document.getElementById('my-hp-bar').style.width = '100%';
+                document.getElementById('enemy-hp-bar').style.width = '100%';
+                isGameOverFlag = false;
+
                 setTimeout(() => {
                   document.getElementById('menu-screen').style.display = 'none';
                   document.getElementById('game-title').style.display = 'none'; 
@@ -258,27 +231,21 @@
   }
 
   function startTimer() {
-    remainingTime = 180; // ✨ マッチ時に180秒（3分）からカウントダウンを開始
+    remainingTime = 180; 
     document.getElementById('timer-text').innerText = `残り秒数: ${remainingTime}秒`;
     document.getElementById('timer-text').style.color = '#FFD166';
     document.getElementById('message-input').disabled = false;
     document.getElementById('send-btn').disabled = false;
 
     timerIntervalId = setInterval(() => {
+      if (isGameOverFlag) return; // K.O.終了してたらカウントしない
+
       remainingTime--;
       if (remainingTime <= 0) {
-        clearInterval(timerIntervalId);
-        document.getElementById('timer-text').innerText = "⏱️ ディベート終了！！！";
-        document.getElementById('timer-text').style.color = '#FF477E';
-        
-        document.getElementById('message-input').disabled = true;
-        document.getElementById('send-btn').disabled = true;
+        endGame("⏱️ タイムアップ！引き分け！");
       } else {
         document.getElementById('timer-text').innerText = `残り秒数: ${remainingTime}秒`;
-        // ラスト15秒になったら焦らせるためにタイマーを赤くする
-        if (remainingTime <= 15) {
-          document.getElementById('timer-text').style.color = '#FF477E'; 
-        }
+        if (remainingTime <= 15) { document.getElementById('timer-text').style.color = '#FF477E'; }
       }
     }, 1000);
   }
@@ -286,8 +253,9 @@
   function sendMessage() {
     const input = document.getElementById('message-input');
     const text = input.value.trim();
-    if (!text || !myRoomName || remainingTime <= 0) return; 
+    if (!text || !myRoomName || remainingTime <= 0 || isGameOverFlag) return; 
 
+    // 自分のHP情報をサーバーに認識させるために、最初の発言時に一度空データを送る対策も兼ねる
     fetch(`${SERVER_URL}/send-message`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -300,7 +268,47 @@
     if (!myRoomName) return;
     fetch(`${SERVER_URL}/get-messages?roomName=${myRoomName}`)
             .then(response => response.json())
-            .then(messages => {
+            .then(data => {
+              const messages = data.messages;
+              const hpData = data.hpData;
+
+              // ✨ 【新機能】HPバーのリアルタイム更新処理
+              let myHP = 100;
+              let enemyHP = 100;
+              let enemyName = "相手";
+
+              // サーバーから届いたHPデータを解析
+              Object.keys(hpData).forEach(player => {
+                if (player === myUsername) {
+                  myHP = hpData[player];
+                } else {
+                  enemyName = player;
+                  enemyHP = hpData[player];
+                }
+              });
+
+              // 画面のHPバーを縮める
+              document.getElementById('my-hp-label').innerText = `${myUsername}: ${myHP}`;
+              document.getElementById('enemy-hp-label').innerText = `${enemyName}: ${enemyHP}`;
+              document.getElementById('my-hp-bar').style.width = `${myHP}%`;
+              document.getElementById('enemy-hp-bar').style.width = `${enemyHP}%`;
+
+              // HPバーの色変化（ピンチで赤くする）
+              document.getElementById('my-hp-bar').style.backgroundColor = myHP <= 30 ? '#FF477E' : '#06D6A0';
+              document.getElementById('enemy-hp-bar').style.backgroundColor = enemyHP <= 30 ? '#FF477E' : '#06D6A0';
+
+              // ✨ 【新機能】どちらかのHPが0になったらK.O.判定
+              if (!isGameOverFlag) {
+                if (myHP <= 0 && enemyHP <= 0) {
+                  endGame("💥 相打ち！ダブルK.O.！");
+                } else if (myHP <= 0) {
+                  endGame(`💀 K.O.！ ${enemyName} の勝ち！`);
+                } else if (enemyHP <= 0) {
+                  endGame(`🏆 K.O.！ ${myUsername} の勝ち！`);
+                }
+              }
+
+              // チャットメッセージの更新表示
               if (messages.length === lastMessageCount) return;
               const chatBox = document.getElementById('chat-box');
               chatBox.innerHTML = ''; 
@@ -326,6 +334,23 @@
               chatBox.scrollTop = chatBox.scrollHeight; 
               lastMessageCount = messages.length; 
             });
+  }
+
+  // ✨ 【新機能】ゲーム終了時の共通ロック処理
+  function endGame(resultMessage) {
+    isGameOverFlag = true;
+    clearInterval(timerIntervalId);
+    document.getElementById('timer-text').innerText = resultMessage;
+    document.getElementById('timer-text').style.color = '#FFD166';
+    document.getElementById('message-input').disabled = true;
+    document.getElementById('send-btn').disabled = true;
+
+    // サーバーにも終了を伝える
+    fetch(`${SERVER_URL}/game-over`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ roomName: myRoomName })
+    });
   }
 
   function goBackToMenu() {
