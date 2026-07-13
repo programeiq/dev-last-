@@ -1,0 +1,139 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>SPEED DEBATE</title>
+  <style>
+    /* 全体の背景：明るくポップなクリームイエロー */
+    body {
+      background-color: #FFFDEB;
+      color: #333333;
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    /* タイトル：ネオンピンクで太くて元気な文字 */
+    h1 {
+      font-size: 42px;
+      color: #FF477E;
+      text-shadow: 3px 3px 0px #FFD166;
+      margin-bottom: 30px;
+      letter-spacing: 2px;
+    }
+
+    .btn-container {
+      margin: 20px;
+    }
+
+    /* ボタン：ぷっくり立体的でアメコミ風のデザイン */
+    button {
+      background-color: #4EA8DE;
+      color: #ffffff;
+      border: 3px solid #333333;
+      padding: 18px 35px;
+      font-size: 22px;
+      font-weight: bold;
+      cursor: pointer;
+      border-radius: 50px;
+      margin: 0 15px;
+      box-shadow: 0px 8px 0px #333333; /* クッキリした太い影 */
+      transition: all 0.1s ease;
+      outline: none;
+    }
+
+    /* 右側のRANKINGボタンだけミントグリーンにしてさらにカラフルに */
+    button:nth-child(2) {
+      background-color: #06D6A0;
+    }
+
+    /* ボタンにマウスを乗せたとき */
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0px 10px 0px #333333;
+    }
+
+    /* クリックした瞬間：グッと押し込まれるポップな動き */
+    button:active {
+      transform: translateY(6px);
+      box-shadow: 0px 2px 0px #333333;
+    }
+
+    /* レスポンスエリア：お菓子のパッケージ風デザイン */
+    #response-area {
+      margin-top: 40px;
+      padding: 25px;
+      border: 3px solid #333333;
+      border-radius: 20px;
+      width: 80%;
+      max-width: 550px;
+      min-height: 60px;
+      text-align: center;
+      background-color: #ffffff;
+      box-shadow: 6px 6px 0px #FFD166;
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    /* ステータス文字のベース */
+    #status-text {
+      display: inline-block;
+      padding: 5px 15px;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>SPEED DEBATE</h1>
+
+<div class="btn-container">
+  <button onclick="sendRequest('match')">MATCH</button>
+  <button onclick="sendRequest('ranking')">RANKING</button>
+</div>
+
+<div id="response-area">
+  STATUS : <span id="status-text" style="color: #FF9F1C; background-color: #FFEEDD;">READY</span>
+</div>
+
+<script>
+  // お二人のRailwayサーバーのURL
+  const SERVER_URL = 'file:///C:/Users/info/IdeaProjects/demo_new/index.html';
+
+  function sendRequest(type) {
+    const statusText = document.getElementById('status-text');
+    statusText.innerText = 'CONNECTING...';
+    statusText.style.color = '#4EA8DE';
+    statusText.style.backgroundColor = '#E2F0CB';
+
+
+    fetch(`${SERVER_URL}/${type}`)
+            .then(response => {
+              if (!response.ok) {
+                return response.text().then(errText => { throw new Error(errText); });
+              }
+              return response.text();
+            })
+            .then(data => {
+              // 通信成功
+              statusText.innerText = data;
+              statusText.style.color = '#06D6A0';
+              statusText.style.backgroundColor = '#E8F5E9';
+            })
+            .catch(error => {
+              // 通信失敗
+              statusText.innerText = 'ERROR: ' + error.message;
+              statusText.style.color = '#FF477E';
+              statusText.style.backgroundColor = '#FFEBEE';
+            });
+  }
+</script>
+
+</body>
+</html>
