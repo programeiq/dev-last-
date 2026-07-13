@@ -92,7 +92,6 @@
       box-sizing: border-box;
     }
 
-    /* ✨ 【新機能】お題とタイマーを表示する看板 */
     #theme-info {
       width: 100%;
       background-color: #FF7096;
@@ -160,7 +159,6 @@
       box-shadow: none;
     }
 
-    /* 送信不可になった時のボタンデザイン */
     #send-btn:disabled {
       background-color: #AAAAAA;
       cursor: not-allowed;
@@ -174,6 +172,7 @@
 <h1 id="game-title">ゆるろん</h1>
 <div id="user-badge">プレイヤー: 読み込み中...</div>
 
+<!-- 🚪 メインメニュー画面 -->
 <div id="menu-screen">
   <div class="btn-container">
     <button onclick="sendRequest('match')">MATCH</button>
@@ -184,15 +183,18 @@
   </div>
 </div>
 
+<!-- 💬 LINE風ディベート対戦画面 -->
 <div id="debate-screen">
   <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 10px;">
     <div id="room-title" style="font-size: 14px; font-weight: bold; color: #FFFFFF;">部屋名: 接続中...</div>
     <button class="btn-back" onclick="goBackToMenu()">戻る</button>
   </div>
 
+  <!-- お題とタイマー表示エリア -->
   <div id="theme-info">
     <div id="current-theme" style="font-size: 18px;">お題: 読み込み中...</div>
-    <div id="timer-text" style="font-size: 14px; margin-top: 4px; color: #FFD166;">残り秒数: 60秒</div>
+    <!-- 表示を初期状態から3分（180秒）に変更 -->
+    <div id="timer-text" style="font-size: 14px; margin-top: 4px; color: #FFD166;">残り秒数: 180秒</div>
   </div>
 
   <div id="chat-box"></div>
@@ -207,8 +209,8 @@
   let myRoomName = '';
   let lastMessageCount = 0; 
   let chatIntervalId = null;
-  let timerIntervalId = null; // ✨ タイマー用のID
-  let remainingTime = 60; // ✨ 制限時間（60秒）
+  let timerIntervalId = null; 
+  let remainingTime = 180; // ✨ 【ここを変更】制限時間を180秒（3分）に設定！
 
   let myUsername = localStorage.getItem('yururon_username');
   if (!myUsername) {
@@ -236,10 +238,9 @@
               if (statusText) { statusText.innerText = data; }
 
               if (data.startsWith('MATCHING_SUCCESS')) {
-                // 配列の形にバラして「部屋名」と「お題」をバラバラに抜き出す
                 const parts = data.split(' | ');
                 myRoomName = parts[0].split(': ')[1]; 
-                const currentTheme = parts[1]; // お題を取得
+                const currentTheme = parts[1]; 
 
                 document.getElementById('room-title').innerText = `対戦部屋: ${myRoomName}`;
                 document.getElementById('current-theme').innerText = `お題：${currentTheme}`;
@@ -249,17 +250,15 @@
                   document.getElementById('game-title').style.display = 'none'; 
                   document.getElementById('debate-screen').style.display = 'flex';
                   
-                  // 各種タイマースタート
                   chatIntervalId = setInterval(updateChatLog, 1000);
-                  startTimer(); // ✨ カウントダウンの開始
+                  startTimer(); 
                 }, 1000);
               }
             });
   }
 
-  // ✨ 【新機能】カウントダウンタイマーを動かす処理
   function startTimer() {
-    remainingTime = 60; // 60秒にリセット
+    remainingTime = 180; // ✨ マッチ時に180秒（3分）からカウントダウンを開始
     document.getElementById('timer-text').innerText = `残り秒数: ${remainingTime}秒`;
     document.getElementById('timer-text').style.color = '#FFD166';
     document.getElementById('message-input').disabled = false;
@@ -272,13 +271,13 @@
         document.getElementById('timer-text').innerText = "⏱️ ディベート終了！！！";
         document.getElementById('timer-text').style.color = '#FF477E';
         
-        // 入力欄と送信ボタンをロックしてお喋りできなくする
         document.getElementById('message-input').disabled = true;
         document.getElementById('send-btn').disabled = true;
       } else {
         document.getElementById('timer-text').innerText = `残り秒数: ${remainingTime}秒`;
-        if (remainingTime <= 10) {
-          document.getElementById('timer-text').style.color = '#FF477E'; // 残り10秒で文字を赤くする
+        // ラスト15秒になったら焦らせるためにタイマーを赤くする
+        if (remainingTime <= 15) {
+          document.getElementById('timer-text').style.color = '#FF477E'; 
         }
       }
     }, 1000);
@@ -287,7 +286,7 @@
   function sendMessage() {
     const input = document.getElementById('message-input');
     const text = input.value.trim();
-    if (!text || !myRoomName || remainingTime <= 0) return; // 終了してたら送らせない
+    if (!text || !myRoomName || remainingTime <= 0) return; 
 
     fetch(`${SERVER_URL}/send-message`, {
       method: 'POST',
@@ -331,7 +330,7 @@
 
   function goBackToMenu() {
     if (chatIntervalId) { clearInterval(chatIntervalId); }
-    if (timerIntervalId) { clearInterval(timerIntervalId); } // タイマーも止める
+    if (timerIntervalId) { clearInterval(timerIntervalId); } 
     myRoomName = '';
     lastMessageCount = 0;
     document.getElementById('chat-box').innerHTML = '';
