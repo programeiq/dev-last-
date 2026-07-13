@@ -93,14 +93,14 @@
       width: 100%;
     }
 
-    /* LINE風ディベート画面のスタイル（バグ修正版） */
+    /* LINE風ディベート画面のスタイル */
     #debate-screen {
       display: none;
       flex-direction: column;
       align-items: center;
       width: 90%;
       max-width: 500px;
-      height: 75vh; /* 画面に綺麗に収まる高さに微調整 */
+      height: 75vh;
       border: 3px solid #333333;
       border-radius: 20px;
       background-color: #7593B1;
@@ -181,7 +181,6 @@
       box-shadow: none;
     }
 
-    /* 小さめの戻るボタン用のスタイル */
     .btn-back {
       padding: 6px 15px;
       font-size: 14px;
@@ -201,8 +200,9 @@
     <button onclick="sendRequest('match')">MATCH</button>
     <button class="btn-ranking" onclick="sendRequest('ranking')">RANKING</button>
   </div>
+  
   <div id="response-area">
-    STATUS : <span id="status-text" style="color: #FF9F1C; background-color: #FFEEDD;">READY</span>
+    <span id="display-box">STATUS : <span id="status-text" style="color: #FF9F1C; background-color: #FFEEDD;">READY</span></span>
   </div>
 </div>
 
@@ -225,25 +225,30 @@
   let myRoomName = '';
   let myPlayerId = ''; 
   let lastMessageCount = 0; 
-  let chatIntervalId = null; // タイマーを止めるためのID保存用
+  let chatIntervalId = null;
 
   function sendRequest(type) {
-    const statusText = document.getElementById('status-text');
+    const displayBox = document.getElementById('display-box');
+    
+    // ✨ MATCHを押した時は、完全に綺麗なSTATUS表示にリセットする
     if (type === 'match') {
-      statusText.innerText = 'CONNECTING...';
+      displayBox.innerHTML = 'STATUS : <span id="status-text" style="color: #4EA8DE; background-color: #E2F0CB;">CONNECTING...</span>';
     }
 
     fetch(`${SERVER_URL}/${type}`)
             .then(response => response.text())
             .then(data => {
               if (type === 'ranking') {
-                // ランキングボタンのときは、レスポンスエリアに文字を表示するだけ
-                statusText.parentNode.innerHTML = data;
+                // ランキングデータを表示（MATCHの枠を壊さないように、文字だけを入れ替える）
+                displayBox.innerHTML = data;
                 return;
               }
 
               // マッチング成功時の処理
-              statusText.innerText = data;
+              const statusText = document.getElementById('status-text');
+              if (statusText) {
+                statusText.innerText = data;
+              }
 
               if (data.startsWith('MATCHING_SUCCESS')) {
                 myRoomName = data.split(': ')[1]; 
@@ -256,7 +261,6 @@
                   document.getElementById('game-title').style.display = 'none'; 
                   document.getElementById('debate-screen').style.display = 'flex';
                   
-                  // チャットを定期更新（タイマーIDを保存）
                   chatIntervalId = setInterval(updateChatLog, 1000);
                 }, 1000);
               }
@@ -315,32 +319,20 @@
             });
   }
 
-  // 🚪 メインメニューに戻るための処理
   function goBackToMenu() {
-    // タイマーを止める
     if (chatIntervalId) {
       clearInterval(chatIntervalId);
     }
-    // データをリセット
     myRoomName = '';
     lastMessageCount = 0;
     document.getElementById('chat-box').innerHTML = '';
 
-    // 画面の表示を元に戻す
     document.getElementById('debate-screen').style.display = 'none';
     document.getElementById('game-title').style.display = 'block';
     document.getElementById('menu-screen').style.display = 'flex';
     
-    // ステータスエリアを初期状態に戻す
-    document.getElementById('menu-screen').innerHTML = `
-      <div class="btn-container">
-        <button onclick="sendRequest('match')">MATCH</button>
-        <button class="btn-ranking" onclick="sendRequest('ranking')">RANKING</button>
-      </div>
-      <div id="response-area">
-        STATUS : <span id="status-text" style="color: #FF9F1C; background-color: #FFEEDD;">READY</span>
-      </div>
-    `;
+    // メニューに戻った時も綺麗な状態にリセット
+    document.getElementById('display-box').innerHTML = 'STATUS : <span id="status-text" style="color: #FF9F1C; background-color: #FFEEDD;">READY</span>';
   }
 </script>
 
