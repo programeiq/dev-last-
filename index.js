@@ -2,7 +2,9 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// 誰の通信でも受け付けるための設定（CORS対策）
+// 通信のJSONデータを読み込むための設定
+app.use(express.json());
+
 app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -10,48 +12,70 @@ app.use((req, res, next) => {
     next();
 });
 
-// ✨ 【ここを追加しました】トップページにアクセスされたらindex.htmlを表示する
+// トップページの表示
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
 });
 
-// ⏳ ここが「待合室」！待っている人の通信を一時的に保存する場所
+// ⏳ マッチング待合室のデータ
 let waitingPlayer = null; 
-let roomCount = 0; // 作った部屋の数
+let roomCount = 0;
 
-// 🎮 MATCHボタンが押されたときの処理
+// 💬 ディベートのメッセージを一時保存する場所
+// 部屋名(ROOM_001など)ごとに、未読メッセージのリストを管理します
+let chatMessages = {};
+
+// マッチング要求
 app.get('/match', (req, res) => {
     console.log('📡 マッチング要求を受信しました！');
 
     if (waitingPlayer === null) {
-        // 👥 待合室が空っぽのとき（1人目のプレイヤー）
-        waitingPlayer = res; // 1人目の通信を「キープ（保留）」して待たせる！
-        console.log('👤 1人目のプレイヤーが待合室に入りました。相手を待っています...');
+        waitingPlayer = res; 
+        console.log('👤 1人目が待機中...');
     } else {
-        // 🤝 すでに誰か待っていたとき（2人目のプレイヤーが到着！）
         roomCount++;
-        const roomName = `ROOM_${String(roomCount).padStart(3, '0')}`; // ROOM_001 とかを作る
+        const roomName = `ROOM_${String(roomCount).padStart(3, '0')}`; 
         
-        console.log(`🎉 2人目が来ました！マッチング成立！ 【${roomName}】を作ります！`);
+        console.log(`🎉 マッチング成立！ 【${roomName}】`);
 
-        // 1人目のプレイヤーに「マッチしたよ！」とお返事を返す
+        // 部屋専用のメッセージ置き場を作る
+        chatMessages[roomName] = [];
+
         waitingPlayer.send(`MATCHING_SUCCESS: ${roomName}`);
-        
-        // 2人目のプレイヤー（今来た人）にも同じお返事を返す
         res.send(`MATCHING_SUCCESS: ${roomName}`);
 
-        // 待合室を空っぽに戻して、次の人たちに備える
         waitingPlayer = null;
     }
 });
 
-// 🏆 RANKINGボタンが押されたときの処理
+// ✉️ メッセージを「送信」するルート
+app.post('/send-message', (req, res) => {
+    const { roomName, sender, text } = req.body;
+    console.log(`📩 メッセージ受信 [${roomName}] ${sender}: ${text}`);
+
+    if (chatMessages[roomName]) {
+        // メッセージを部屋の箱に保存する
+        chatMessages[roomName].push({ sender, text });
+    }
+    res.send('OK');
+});
+
+// 🔄 相手からのメッセージが届いているか「確認（取得）」するルート
+app.get('/get-messages', (req, res) => {
+    const roomName = req.query.roomName;
+    
+    if (chatMessages[roomName]) {
+        // 部屋に溜まっているメッセージを全部まとめて送り返す
+        res.json(chatMessages[roomName]);
+    } else {
+        res.json([]);
+    }
+});
+
 app.get('/ranking', (req, res) => {
-    console.log('📡 ランキング要求を受信しました');
     res.send('1位: たろう 99勝\n2位: じろう 88勝\n3位: さぶろう 77勝');
 });
 
-// サーバーを起動するコード
 app.listen(PORT, () => {
     console.log(`🚀 ゆるろんサーバーがポート ${PORT} で元気に起動したよ！`);
 });
