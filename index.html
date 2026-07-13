@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>ゆるろん</title>
   <style>
-    /* 全体の背景：明るくポップなクリームイエロー */
     body {
       background-color: #FFFDEB;
       color: #333333;
@@ -18,7 +17,6 @@
       overflow: hidden;
     }
 
-    /* タイトル：ネオンピンクで太くて元気な文字 */
     h1 {
       font-size: 42px;
       color: #FF477E;
@@ -27,7 +25,6 @@
       letter-spacing: 2px;
     }
 
-    /* ログイン中のユーザー名表示スタイル */
     #user-badge {
       font-size: 16px;
       font-weight: bold;
@@ -42,7 +39,6 @@
       margin: 20px;
     }
 
-    /* ボタン：ぷっくり立体的でアメコミ風のデザイン */
     button {
       background-color: #4EA8DE;
       color: #ffffff;
@@ -58,22 +54,10 @@
       outline: none;
     }
 
-    /* RANKINGボタンはミントグリーン */
-    .btn-ranking {
-      background-color: #06D6A0;
-    }
+    .btn-ranking { background-color: #06D6A0; }
+    button:hover { transform: translateY(-2px); box-shadow: 0px 10px 0px #333333; }
+    button:active { transform: translateY(6px); box-shadow: 0px 2px 0px #333333; }
 
-    button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0px 10px 0px #333333;
-    }
-
-    button:active {
-      transform: translateY(6px);
-      box-shadow: 0px 2px 0px #333333;
-    }
-
-    /* レスポンスエリア */
     #response-area {
       margin-top: 20px;
       padding: 25px;
@@ -90,21 +74,9 @@
       white-space: pre-wrap;
     }
 
-    #status-text {
-      display: inline-block;
-      padding: 5px 15px;
-      border-radius: 10px;
-    }
+    #status-text { display: inline-block; padding: 5px 15px; border-radius: 10px; }
+    #menu-screen { display: flex; flex-direction: column; align-items: center; width: 100%; }
 
-    /* メインメニューのコンテナ */
-    #menu-screen {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      width: 100%;
-    }
-
-    /* LINE風ディベート画面のスタイル */
     #debate-screen {
       display: none;
       flex-direction: column;
@@ -120,7 +92,20 @@
       box-sizing: border-box;
     }
 
-    /* チャット表示エリア */
+    /* ✨ 【新機能】お題とタイマーを表示する看板 */
+    #theme-info {
+      width: 100%;
+      background-color: #FF7096;
+      border: 2px solid #333333;
+      border-radius: 12px;
+      padding: 8px;
+      text-align: center;
+      color: white;
+      font-weight: bold;
+      margin-bottom: 10px;
+      box-sizing: border-box;
+    }
+
     #chat-box {
       width: 100%;
       flex-grow: 1;
@@ -132,24 +117,10 @@
       flex-direction: column;
     }
 
-    .message-row {
-      display: flex;
-      flex-direction: column;
-      width: 100%;
-      margin: 6px 0;
-    }
-
+    .message-row { display: flex; flex-direction: column; width: 100%; margin: 6px 0; }
     .my-message { align-items: flex-end; }
     .other-message { align-items: flex-start; }
-
-    /* 吹き出しの上の名前ラベル */
-    .sender-name {
-      font-size: 12px;
-      color: #EEEEEE;
-      font-weight: bold;
-      margin-bottom: 2px;
-      text-shadow: 1px 1px 1px #333333;
-    }
+    .sender-name { font-size: 12px; color: #EEEEEE; font-weight: bold; margin-bottom: 2px; text-shadow: 1px 1px 1px #333333; }
 
     .bubble {
       max-width: 75%;
@@ -162,22 +133,9 @@
       border: 2px solid #333333;
     }
 
-    .my-message .bubble {
-      background-color: #85E245;
-      color: #333333;
-      border-radius: 15px 15px 0px 15px;
-    }
-
-    .other-message .bubble {
-      background-color: #FFFFFF;
-      color: #333333;
-      border-radius: 15px 15px 15px 0px;
-    }
-
-    .chat-input-container {
-      display: flex;
-      width: 100%;
-    }
+    .my-message .bubble { background-color: #85E245; color: #333333; border-radius: 15px 15px 0px 15px; }
+    .other-message .bubble { background-color: #FFFFFF; color: #333333; border-radius: 15px 15px 15px 0px; }
+    .chat-input-container { display: flex; width: 100%; }
 
     #message-input {
       flex-grow: 1;
@@ -202,20 +160,18 @@
       box-shadow: none;
     }
 
-    .btn-back {
-      padding: 6px 15px;
-      font-size: 14px;
-      background-color: #FF477E;
-      box-shadow: 0px 4px 0px #333333;
-      border-radius: 20px;
-      margin: 0;
+    /* 送信不可になった時のボタンデザイン */
+    #send-btn:disabled {
+      background-color: #AAAAAA;
+      cursor: not-allowed;
     }
+
+    .btn-back { padding: 6px 15px; font-size: 14px; background-color: #FF477E; box-shadow: 0px 4px 0px #333333; border-radius: 20px; margin: 0; }
   </style>
 </head>
 <body>
 
 <h1 id="game-title">ゆるろん</h1>
-
 <div id="user-badge">プレイヤー: 読み込み中...</div>
 
 <div id="menu-screen">
@@ -223,7 +179,6 @@
     <button onclick="sendRequest('match')">MATCH</button>
     <button class="btn-ranking" onclick="sendRequest('ranking')">RANKING</button>
   </div>
-  
   <div id="response-area">
     <span id="display-box">STATUS : <span id="status-text" style="color: #FF9F1C; background-color: #FFEEDD;">READY</span></span>
   </div>
@@ -231,11 +186,15 @@
 
 <div id="debate-screen">
   <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 10px;">
-    <div id="room-title" style="font-size: 16px; font-weight: bold; color: #FFFFFF; text-shadow: 1px 1px 2px #333333;">
-      部屋名: 接続中...
-    </div>
+    <div id="room-title" style="font-size: 14px; font-weight: bold; color: #FFFFFF;">部屋名: 接続中...</div>
     <button class="btn-back" onclick="goBackToMenu()">戻る</button>
   </div>
+
+  <div id="theme-info">
+    <div id="current-theme" style="font-size: 18px;">お題: 読み込み中...</div>
+    <div id="timer-text" style="font-size: 14px; margin-top: 4px; color: #FFD166;">残り秒数: 60秒</div>
+  </div>
+
   <div id="chat-box"></div>
   <div class="chat-input-container">
     <input type="text" id="message-input" placeholder="自分の意見を入力...">
@@ -243,31 +202,24 @@
   </div>
 </div>
 
-<script {contentFetchId="uploaded:image_00c6d9.png-48e669f3-70f7-406d-9815-b2137b94b9b9"}>
+<script>
   const SERVER_URL = 'https://dev-last-production.up.railway.app';
   let myRoomName = '';
   let lastMessageCount = 0; 
   let chatIntervalId = null;
+  let timerIntervalId = null; // ✨ タイマー用のID
+  let remainingTime = 60; // ✨ 制限時間（60秒）
 
-  // ✨ 【大改造】一番最初だけ名前を聞いて、ブラウザの引き出し（localStorage）に保存する処理
-  let myUsername = localStorage.getItem('yururon_username'); // まずは引き出しを確認
-
+  let myUsername = localStorage.getItem('yururon_username');
   if (!myUsername) {
-    // 🗃️ 引き出しが空っぽ（本当に最初の1回目）なら名前を聞く
     myUsername = prompt('ユーザーネームを入力してください！');
-    if (!myUsername || myUsername.trim() === '') {
-      myUsername = '名無しさん';
-    }
-    // 入力された名前を引き出しにしっかり保存する
+    if (!myUsername || myUsername.trim() === '') { myUsername = '名無しさん'; }
     localStorage.setItem('yururon_username', myUsername);
   }
-
-  // 画面の上部に保存された名前を表示する
   document.getElementById('user-badge').innerText = `プレイヤー: ${myUsername}`;
 
   function sendRequest(type) {
     const displayBox = document.getElementById('display-box');
-    
     if (type === 'match') {
       displayBox.innerHTML = 'STATUS : <span id="status-text" style="color: #4EA8DE; background-color: #E2F0CB;">CONNECTING...</span>';
     }
@@ -281,64 +233,84 @@
               }
 
               const statusText = document.getElementById('status-text');
-              if (statusText) {
-                statusText.innerText = data;
-              }
+              if (statusText) { statusText.innerText = data; }
 
               if (data.startsWith('MATCHING_SUCCESS')) {
-                myRoomName = data.split(': ')[1]; 
+                // 配列の形にバラして「部屋名」と「お題」をバラバラに抜き出す
+                const parts = data.split(' | ');
+                myRoomName = parts[0].split(': ')[1]; 
+                const currentTheme = parts[1]; // お題を取得
 
                 document.getElementById('room-title').innerText = `対戦部屋: ${myRoomName}`;
+                document.getElementById('current-theme').innerText = `お題：${currentTheme}`;
                 
                 setTimeout(() => {
                   document.getElementById('menu-screen').style.display = 'none';
                   document.getElementById('game-title').style.display = 'none'; 
                   document.getElementById('debate-screen').style.display = 'flex';
                   
+                  // 各種タイマースタート
                   chatIntervalId = setInterval(updateChatLog, 1000);
+                  startTimer(); // ✨ カウントダウンの開始
                 }, 1000);
               }
             });
   }
 
+  // ✨ 【新機能】カウントダウンタイマーを動かす処理
+  function startTimer() {
+    remainingTime = 60; // 60秒にリセット
+    document.getElementById('timer-text').innerText = `残り秒数: ${remainingTime}秒`;
+    document.getElementById('timer-text').style.color = '#FFD166';
+    document.getElementById('message-input').disabled = false;
+    document.getElementById('send-btn').disabled = false;
+
+    timerIntervalId = setInterval(() => {
+      remainingTime--;
+      if (remainingTime <= 0) {
+        clearInterval(timerIntervalId);
+        document.getElementById('timer-text').innerText = "⏱️ ディベート終了！！！";
+        document.getElementById('timer-text').style.color = '#FF477E';
+        
+        // 入力欄と送信ボタンをロックしてお喋りできなくする
+        document.getElementById('message-input').disabled = true;
+        document.getElementById('send-btn').disabled = true;
+      } else {
+        document.getElementById('timer-text').innerText = `残り秒数: ${remainingTime}秒`;
+        if (remainingTime <= 10) {
+          document.getElementById('timer-text').style.color = '#FF477E'; // 残り10秒で文字を赤くする
+        }
+      }
+    }, 1000);
+  }
+
   function sendMessage() {
     const input = document.getElementById('message-input');
     const text = input.value.trim();
-    if (!text || !myRoomName) return;
+    if (!text || !myRoomName || remainingTime <= 0) return; // 終了してたら送らせない
 
     fetch(`${SERVER_URL}/send-message`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        roomName: myRoomName,
-        sender: myUsername, 
-        text: text
-      })
+      body: JSON.stringify({ roomName: myRoomName, sender: myUsername, text: text })
     });
-
     input.value = '';
   }
 
   function updateChatLog() {
     if (!myRoomName) return;
-
     fetch(`${SERVER_URL}/get-messages?roomName=${myRoomName}`)
             .then(response => response.json())
             .then(messages => {
               if (messages.length === lastMessageCount) return;
-              
               const chatBox = document.getElementById('chat-box');
               chatBox.innerHTML = ''; 
 
               messages.forEach(msg => {
                 const rowElement = document.createElement('div');
                 rowElement.classList.add('message-row');
-
-                if (msg.sender === myUsername) {
-                  rowElement.classList.add('my-message');
-                } else {
-                  rowElement.classList.add('other-message');
-                }
+                if (msg.sender === myUsername) { rowElement.classList.add('my-message'); } 
+                else { rowElement.classList.add('other-message'); }
 
                 const nameElement = document.createElement('div');
                 nameElement.classList.add('sender-name');
@@ -352,16 +324,14 @@
                 rowElement.appendChild(bubbleElement);
                 chatBox.appendChild(rowElement);
               });
-
               chatBox.scrollTop = chatBox.scrollHeight; 
               lastMessageCount = messages.length; 
             });
   }
 
   function goBackToMenu() {
-    if (chatIntervalId) {
-      clearInterval(chatIntervalId);
-    }
+    if (chatIntervalId) { clearInterval(chatIntervalId); }
+    if (timerIntervalId) { clearInterval(timerIntervalId); } // タイマーも止める
     myRoomName = '';
     lastMessageCount = 0;
     document.getElementById('chat-box').innerHTML = '';
@@ -369,7 +339,6 @@
     document.getElementById('debate-screen').style.display = 'none';
     document.getElementById('game-title').style.display = 'block';
     document.getElementById('menu-screen').style.display = 'flex';
-    
     document.getElementById('display-box').innerHTML = 'STATUS : <span id="status-text" style="color: #FF9F1C; background-color: #FFEEDD;">READY</span>';
   }
 </script>
