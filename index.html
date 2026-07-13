@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>ゆるろん</title>
   <style>
-    /* 全体の背景：明るくポップなクリームイエロー */
     body {
       background-color: #FFFDEB;
       color: #333333;
@@ -18,12 +17,11 @@
       overflow: hidden;
     }
 
-    /* タイトル：ネオンピンクで太くて元気な文字 */
     h1 {
       font-size: 42px;
       color: #FF477E;
       text-shadow: 3px 3px 0px #FFD166;
-      margin-bottom: 30px;
+      margin-bottom: 20px;
       letter-spacing: 2px;
     }
 
@@ -31,7 +29,6 @@
       margin: 20px;
     }
 
-    /* ボタン：ぷっくり立体的でアメコミ風のデザイン */
     button {
       background-color: #4EA8DE;
       color: #ffffff;
@@ -42,31 +39,27 @@
       cursor: pointer;
       border-radius: 50px;
       margin: 0 15px;
-      box-shadow: 0px 8px 0px #333333; /* クッキリした太い影 */
+      box-shadow: 0px 8px 0px #333333;
       transition: all 0.1s ease;
       outline: none;
     }
 
-    /* 右側のRANKINGボタンだけミントグリーンにしてさらにカラフルに */
     button:nth-child(2) {
       background-color: #06D6A0;
     }
 
-    /* ボタンにマウスを乗せたとき */
     button:hover {
       transform: translateY(-2px);
       box-shadow: 0px 10px 0px #333333;
     }
 
-    /* クリックした瞬間：グッと押し込まれるポップな動き */
     button:active {
       transform: translateY(6px);
       box-shadow: 0px 2px 0px #333333;
     }
 
-    /* レスポンスエリア：お菓子のパッケージ風デザイン */
     #response-area {
-      margin-top: 40px;
+      margin-top: 20px;
       padding: 25px;
       border: 3px solid #333333;
       border-radius: 20px;
@@ -80,11 +73,65 @@
       font-weight: bold;
     }
 
-    /* ステータス文字のベース */
     #status-text {
       display: inline-block;
       padding: 5px 15px;
       border-radius: 10px;
+    }
+
+    /* ✨ 【新機能】ディベート画面のスタイル（最初は隠しておく） */
+    #debate-screen {
+      display: none; /* 最初は見せない */
+      flex-direction: column;
+      align-items: center;
+      width: 90%;
+      max-width: 600px;
+      height: 60vh;
+      border: 3px solid #333333;
+      border-radius: 20px;
+      background-color: #ffffff;
+      padding: 20px;
+      box-shadow: 6px 6px 0px #4EA8DE;
+    }
+
+    #chat-box {
+      width: 100%;
+      flex-grow: 1;
+      border: 2px solid #333333;
+      border-radius: 10px;
+      background-color: #FAFAFA;
+      overflow-y: auto;
+      margin-bottom: 15px;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+
+    .chat-input-container {
+      display: flex;
+      width: 100%;
+    }
+
+    #message-input {
+      flex-grow: 1;
+      padding: 10px;
+      font-size: 16px;
+      border: 2px solid #333333;
+      border-radius: 10px 0 0 10px;
+      outline: none;
+    }
+
+    #send-btn {
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #FFD166;
+      color: #333333;
+      border: 2px solid #333333;
+      border-left: none;
+      border-radius: 0 10px 10px 0;
+      cursor: pointer;
+      font-weight: bold;
+      box-shadow: none;
+      margin: 0;
     }
   </style>
 </head>
@@ -92,17 +139,29 @@
 
 <h1>ゆるろん</h1>
 
-<div class="btn-container">
-  <button onclick="sendRequest('match')">MATCH</button>
-  <button onclick="sendRequest('ranking')">RANKING</button>
+<div id="menu-screen">
+  <div class="btn-container">
+    <button onclick="sendRequest('match')">MATCH</button>
+    <button onclick="sendRequest('ranking')">RANKING</button>
+  </div>
+
+  <div id="response-area">
+    STATUS : <span id="status-text" style="color: #FF9F1C; background-color: #FFEEDD;">READY</span>
+  </div>
 </div>
 
-<div id="response-area">
-  STATUS : <span id="status-text" style="color: #FF9F1C; background-color: #FFEEDD;">READY</span>
+<div id="debate-screen">
+  <div style="font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #FF477E;">
+    ディベート中！お互いの意見をぶつけ合おう！
+  </div>
+  <div id="chat-box"></div>
+  <div class="chat-input-container">
+    <input type="text" id="message-input" placeholder="自分の意見を入力...">
+    <button id="send-btn" onclick="sendMessage()">送信</button>
+  </div>
 </div>
 
 <script>
-  // ✨ 【改善ポイント①】お尻の「/」を完全に削除して一本化しました！
   const SERVER_URL = 'https://dev-last-production.up.railway.app';
 
   function sendRequest(type) {
@@ -111,7 +170,6 @@
     statusText.style.color = '#4EA8DE';
     statusText.style.backgroundColor = '#E2F0CB';
 
-    // ✨ 【改善ポイント②】確実に「スラッシュが1個」だけになるように調整しました！
     fetch(`${SERVER_URL}/${type}`)
             .then(response => {
               if (!response.ok) {
@@ -120,17 +178,40 @@
               return response.text();
             })
             .then(data => {
-              // 通信成功
               statusText.innerText = data;
               statusText.style.color = '#06D6A0';
               statusText.style.backgroundColor = '#E8F5E9';
+
+              // ✨ マッチングが成功したら、ディベート画面へ切り替える
+              if (data.startsWith('MATCHING_SUCCESS')) {
+                setTimeout(() => {
+                  document.getElementById('menu-screen').style.display = 'none'; // メニューを消す
+                  document.getElementById('debate-screen').style.display = 'flex'; // チャット画面を出す
+                }, 1000); // 1秒後に切り替え
+              }
             })
             .catch(error => {
-              // 通信失敗
               statusText.innerText = 'ERROR: ' + error.message;
               statusText.style.color = '#FF477E';
               statusText.style.backgroundColor = '#FFEBEE';
             });
+  }
+
+  // ✨ 【新機能】メッセージを送信する処理（次のステップで中身を作ります）
+  function sendMessage() {
+    const input = document.getElementById('message-input');
+    const text = input.value.trim();
+    if (!text) return;
+
+    // 自分の画面に表示する
+    const chatBox = document.getElementById('chat-box');
+    const msgElement = document.createElement('div');
+    msgElement.style.margin = '5px 0';
+    msgElement.innerText = 'あなた: ' + text;
+    chatBox.appendChild(msgElement);
+
+    input.value = ''; // 入力欄を空にする
+    chatBox.scrollTop = chatBox.scrollHeight; // 一番下までスクロール
   }
 </script>
 
