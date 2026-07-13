@@ -134,7 +134,7 @@
 
     .message-row {
       display: flex;
-      flex-direction: column; /* 名前と吹き出しを縦に並べる */
+      flex-direction: column;
       width: 100%;
       margin: 6px 0;
     }
@@ -243,18 +243,26 @@
   </div>
 </div>
 
-<script>
+<script {contentFetchId="uploaded:image_00c6d9.png-48e669f3-70f7-406d-9815-b2137b94b9b9"}>
   const SERVER_URL = 'https://dev-last-production.up.railway.app';
   let myRoomName = '';
   let lastMessageCount = 0; 
   let chatIntervalId = null;
 
-  // ✨ 【新機能】一番最初にアクセスしたときにユーザーネームを聞く処理
-  let myUsername = prompt('ユーザーネームを入力してください！');
-  if (!myUsername || myUsername.trim() === '') {
-    myUsername = '名無しさん';
+  // ✨ 【大改造】一番最初だけ名前を聞いて、ブラウザの引き出し（localStorage）に保存する処理
+  let myUsername = localStorage.getItem('yururon_username'); // まずは引き出しを確認
+
+  if (!myUsername) {
+    // 🗃️ 引き出しが空っぽ（本当に最初の1回目）なら名前を聞く
+    myUsername = prompt('ユーザーネームを入力してください！');
+    if (!myUsername || myUsername.trim() === '') {
+      myUsername = '名無しさん';
+    }
+    // 入力された名前を引き出しにしっかり保存する
+    localStorage.setItem('yururon_username', myUsername);
   }
-  // 画面の上部に名前を表示する
+
+  // 画面の上部に保存された名前を表示する
   document.getElementById('user-badge').innerText = `プレイヤー: ${myUsername}`;
 
   function sendRequest(type) {
@@ -303,7 +311,7 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         roomName: myRoomName,
-        sender: myUsername, // ✨ ランダムなIDの代わりに、入力した名前を送信する！
+        sender: myUsername, 
         text: text
       })
     });
@@ -326,14 +334,12 @@
                 const rowElement = document.createElement('div');
                 rowElement.classList.add('message-row');
 
-                // 自分の名前と一致するかどうかで左右を分ける
                 if (msg.sender === myUsername) {
                   rowElement.classList.add('my-message');
                 } else {
                   rowElement.classList.add('other-message');
                 }
 
-                // ✨ 吹き出しの上に喋っている人の名前を表示する
                 const nameElement = document.createElement('div');
                 nameElement.classList.add('sender-name');
                 nameElement.innerText = msg.sender;
