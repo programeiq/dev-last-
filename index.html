@@ -44,18 +44,9 @@
       outline: none;
     }
 
-    button:nth-child(2) {
-      background-color: #06D6A0;
-    }
-
     button:hover {
       transform: translateY(-2px);
       box-shadow: 0px 10px 0px #333333;
-    }
-
-    button:active {
-      transform: translateY(6px);
-      box-shadow: 0px 2px 0px #333333;
     }
 
     #response-area {
@@ -79,31 +70,68 @@
       border-radius: 10px;
     }
 
-    /* ✨ 【新機能】ディベート画面のスタイル（最初は隠しておく） */
+    /* 💬 ディベート画面のスタイル */
     #debate-screen {
-      display: none; /* 最初は見せない */
+      display: none;
       flex-direction: column;
       align-items: center;
       width: 90%;
-      max-width: 600px;
-      height: 60vh;
+      max-width: 500px;
+      height: 70vh;
       border: 3px solid #333333;
       border-radius: 20px;
-      background-color: #ffffff;
+      background-color: #7593B1; /* LINEっぽい背景色に変えました */
       padding: 20px;
-      box-shadow: 6px 6px 0px #4EA8DE;
+      box-shadow: 6px 6px 0px #333333;
     }
 
+    /* LINE風のメッセージタイムライン */
     #chat-box {
       width: 100%;
       flex-grow: 1;
-      border: 2px solid #333333;
-      border-radius: 10px;
-      background-color: #FAFAFA;
       overflow-y: auto;
       margin-bottom: 15px;
       padding: 10px;
       box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ✨ 吹き出し全体のベース */
+    .message-row {
+      display: flex;
+      width: 100%;
+      margin: 8px 0;
+    }
+
+    /* 自分は右側、相手は左側 */
+    .my-message { justify-content: flex-end; }
+    .other-message { justify-content: flex-start; }
+
+    /* ✨ LINE風のぷっくりとした吹き出しデザイン */
+    .bubble {
+      max-width: 70%;
+      padding: 10px 15px;
+      border-radius: 15px;
+      font-size: 16px;
+      font-weight: bold;
+      line-height: 1.4;
+      word-wrap: break-word;
+      border: 2px solid #333333;
+    }
+
+    /* 自分の吹き出し：黄緑色 */
+    .my-message .bubble {
+      background-color: #85E245;
+      color: #333333;
+      border-radius: 15px 15px 0px 15px; /* 右下を尖らせる */
+    }
+
+    /* 相手の吹き出し：白色 */
+    .other-message .bubble {
+      background-color: #FFFFFF;
+      color: #333333;
+      border-radius: 15px 15px 15px 0px; /* 左下を尖らせる */
     }
 
     .chat-input-container {
@@ -113,46 +141,44 @@
 
     #message-input {
       flex-grow: 1;
-      padding: 10px;
+      padding: 12px;
       font-size: 16px;
-      border: 2px solid #333333;
-      border-radius: 10px 0 0 10px;
+      border: 3px solid #333333;
+      border-radius: 15px 0 0 15px;
       outline: none;
     }
 
     #send-btn {
-      padding: 10px 20px;
+      padding: 12px 25px;
       font-size: 16px;
       background-color: #FFD166;
       color: #333333;
-      border: 2px solid #333333;
+      border: 3px solid #333333;
       border-left: none;
-      border-radius: 0 10px 10px 0;
+      border-radius: 0 15px 15px 0;
       cursor: pointer;
       font-weight: bold;
-      box-shadow: none;
       margin: 0;
+      box-shadow: none;
     }
   </style>
 </head>
 <body>
 
-<h1>ゆるろん</h1>
+<h1 id="game-title">ゆるろん</h1>
 
 <div id="menu-screen">
   <div class="btn-container">
     <button onclick="sendRequest('match')">MATCH</button>
-    <button onclick="sendRequest('ranking')">RANKING</button>
   </div>
-
   <div id="response-area">
     STATUS : <span id="status-text" style="color: #FF9F1C; background-color: #FFEEDD;">READY</span>
   </div>
 </div>
 
 <div id="debate-screen">
-  <div style="font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #FF477E;">
-    ディベート中！お互いの意見をぶつけ合おう！
+  <div id="room-title" style="font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #FFFFFF; text-shadow: 1px 1px 2px #333333;">
+    部屋名: 接続中...
   </div>
   <div id="chat-box"></div>
   <div class="chat-input-container">
@@ -163,55 +189,94 @@
 
 <script>
   const SERVER_URL = 'https://dev-last-production.up.railway.app';
+  let myRoomName = '';
+  let myPlayerId = ''; // 自分が1人目(Player1)か2人目(Player2)か
+  let lastMessageCount = 0; // すでに表示したメッセージの数
 
   function sendRequest(type) {
     const statusText = document.getElementById('status-text');
     statusText.innerText = 'CONNECTING...';
-    statusText.style.color = '#4EA8DE';
-    statusText.style.backgroundColor = '#E2F0CB';
 
     fetch(`${SERVER_URL}/${type}`)
-            .then(response => {
-              if (!response.ok) {
-                return response.text().then(errText => { throw new Error(errText); });
-              }
-              return response.text();
-            })
+            .then(response => response.text())
             .then(data => {
               statusText.innerText = data;
-              statusText.style.color = '#06D6A0';
-              statusText.style.backgroundColor = '#E8F5E9';
 
-              // ✨ マッチングが成功したら、ディベート画面へ切り替える
               if (data.startsWith('MATCHING_SUCCESS')) {
+                myRoomName = data.split(': ')[1]; // 部屋名を取得
+                
+                // 自分が1人目か2人目かを擬似的に決定
+                myPlayerId = 'Player_' + Math.floor(Math.random() * 1000); 
+
+                document.getElementById('room-title').innerText = `対戦部屋: ${myRoomName}`;
+                
                 setTimeout(() => {
-                  document.getElementById('menu-screen').style.display = 'none'; // メニューを消す
-                  document.getElementById('debate-screen').style.display = 'flex'; // チャット画面を出す
-                }, 1000); // 1秒後に切り替え
+                  document.getElementById('menu-screen').style.display = 'none';
+                  document.getElementById('game-title').style.display = 'none'; // タイトルを隠して画面を広く
+                  document.getElementById('debate-screen').style.display = 'flex';
+                  
+                  // 1秒ごとに相手のメッセージをサーバーへ見に行くタイマーをスタート
+                  setInterval(updateChatLog, 1000);
+                }, 1000);
               }
-            })
-            .catch(error => {
-              statusText.innerText = 'ERROR: ' + error.message;
-              statusText.style.color = '#FF477E';
-              statusText.style.backgroundColor = '#FFEBEE';
             });
   }
 
-  // ✨ 【新機能】メッセージを送信する処理（次のステップで中身を作ります）
+  // メッセージをサーバーに送る処理
   function sendMessage() {
     const input = document.getElementById('message-input');
     const text = input.value.trim();
-    if (!text) return;
+    if (!text || !myRoomName) return;
 
-    // 自分の画面に表示する
-    const chatBox = document.getElementById('chat-box');
-    const msgElement = document.createElement('div');
-    msgElement.style.margin = '5px 0';
-    msgElement.innerText = 'あなた: ' + text;
-    chatBox.appendChild(msgElement);
+    // サーバーに送信する
+    fetch(`${SERVER_URL}/send-message`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        roomName: myRoomName,
+        sender: myPlayerId,
+        text: text
+      })
+    });
 
-    input.value = ''; // 入力欄を空にする
-    chatBox.scrollTop = chatBox.scrollHeight; // 一番下までスクロール
+    input.value = '';
+  }
+
+  // サーバーからメッセージの最新状態を引っ張ってくる処理
+  function updateChatLog() {
+    if (!myRoomName) return;
+
+    fetch(`${SERVER_URL}/get-messages?roomName=${myRoomName}`)
+            .then(response => response.json())
+            .then(messages => {
+              // 新しいメッセージが増えていないなら何もしない
+              if (messages.length === lastMessageCount) return;
+              
+              const chatBox = document.getElementById('chat-box');
+              chatBox.innerHTML = ''; // 一旦クリアして綺麗に再描画
+
+              messages.forEach(msg => {
+                const rowElement = document.createElement('div');
+                rowElement.classList.add('message-row');
+
+                // 自分が送ったメッセージなら右側、相手なら左側
+                if (msg.sender === myPlayerId) {
+                  rowElement.classList.add('my-message');
+                } else {
+                  rowElement.classList.add('other-message');
+                }
+
+                const bubbleElement = document.createElement('div');
+                bubbleElement.classList.add('bubble');
+                bubbleElement.innerText = msg.text;
+
+                rowElement.appendChild(bubbleElement);
+                chatBox.appendChild(rowElement);
+              });
+
+              chatBox.scrollTop = chatBox.scrollHeight; // 自動スクロール
+              lastMessageCount = messages.length; // カウントを更新
+            });
   }
 </script>
 
