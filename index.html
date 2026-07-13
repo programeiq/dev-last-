@@ -27,6 +27,17 @@
       letter-spacing: 2px;
     }
 
+    /* ログイン中のユーザー名表示スタイル */
+    #user-badge {
+      font-size: 16px;
+      font-weight: bold;
+      background-color: #FFD166;
+      padding: 5px 15px;
+      border-radius: 20px;
+      border: 2px solid #333333;
+      margin-bottom: 10px;
+    }
+
     .btn-container {
       margin: 20px;
     }
@@ -76,7 +87,7 @@
       box-shadow: 6px 6px 0px #FFD166;
       font-size: 20px;
       font-weight: bold;
-      white-space: pre-wrap; /* ランキングの改行を有効にする設定 */
+      white-space: pre-wrap;
     }
 
     #status-text {
@@ -123,12 +134,22 @@
 
     .message-row {
       display: flex;
+      flex-direction: column; /* 名前と吹き出しを縦に並べる */
       width: 100%;
       margin: 6px 0;
     }
 
-    .my-message { justify-content: flex-end; }
-    .other-message { justify-content: flex-start; }
+    .my-message { align-items: flex-end; }
+    .other-message { align-items: flex-start; }
+
+    /* 吹き出しの上の名前ラベル */
+    .sender-name {
+      font-size: 12px;
+      color: #EEEEEE;
+      font-weight: bold;
+      margin-bottom: 2px;
+      text-shadow: 1px 1px 1px #333333;
+    }
 
     .bubble {
       max-width: 75%;
@@ -195,6 +216,8 @@
 
 <h1 id="game-title">ゆるろん</h1>
 
+<div id="user-badge">プレイヤー: 読み込み中...</div>
+
 <div id="menu-screen">
   <div class="btn-container">
     <button onclick="sendRequest('match')">MATCH</button>
@@ -223,14 +246,20 @@
 <script>
   const SERVER_URL = 'https://dev-last-production.up.railway.app';
   let myRoomName = '';
-  let myPlayerId = ''; 
   let lastMessageCount = 0; 
   let chatIntervalId = null;
+
+  // ✨ 【新機能】一番最初にアクセスしたときにユーザーネームを聞く処理
+  let myUsername = prompt('ユーザーネームを入力してください！');
+  if (!myUsername || myUsername.trim() === '') {
+    myUsername = '名無しさん';
+  }
+  // 画面の上部に名前を表示する
+  document.getElementById('user-badge').innerText = `プレイヤー: ${myUsername}`;
 
   function sendRequest(type) {
     const displayBox = document.getElementById('display-box');
     
-    // ✨ MATCHを押した時は、完全に綺麗なSTATUS表示にリセットする
     if (type === 'match') {
       displayBox.innerHTML = 'STATUS : <span id="status-text" style="color: #4EA8DE; background-color: #E2F0CB;">CONNECTING...</span>';
     }
@@ -239,12 +268,10 @@
             .then(response => response.text())
             .then(data => {
               if (type === 'ranking') {
-                // ランキングデータを表示（MATCHの枠を壊さないように、文字だけを入れ替える）
                 displayBox.innerHTML = data;
                 return;
               }
 
-              // マッチング成功時の処理
               const statusText = document.getElementById('status-text');
               if (statusText) {
                 statusText.innerText = data;
@@ -252,7 +279,6 @@
 
               if (data.startsWith('MATCHING_SUCCESS')) {
                 myRoomName = data.split(': ')[1]; 
-                myPlayerId = 'Player_' + Math.floor(Math.random() * 1000); 
 
                 document.getElementById('room-title').innerText = `対戦部屋: ${myRoomName}`;
                 
@@ -277,7 +303,7 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         roomName: myRoomName,
-        sender: myPlayerId,
+        sender: myUsername, // ✨ ランダムなIDの代わりに、入力した名前を送信する！
         text: text
       })
     });
@@ -300,16 +326,23 @@
                 const rowElement = document.createElement('div');
                 rowElement.classList.add('message-row');
 
-                if (msg.sender === myPlayerId) {
+                // 自分の名前と一致するかどうかで左右を分ける
+                if (msg.sender === myUsername) {
                   rowElement.classList.add('my-message');
                 } else {
                   rowElement.classList.add('other-message');
                 }
 
+                // ✨ 吹き出しの上に喋っている人の名前を表示する
+                const nameElement = document.createElement('div');
+                nameElement.classList.add('sender-name');
+                nameElement.innerText = msg.sender;
+
                 const bubbleElement = document.createElement('div');
                 bubbleElement.classList.add('bubble');
                 bubbleElement.innerText = msg.text;
 
+                rowElement.appendChild(nameElement);
                 rowElement.appendChild(bubbleElement);
                 chatBox.appendChild(rowElement);
               });
@@ -331,7 +364,6 @@
     document.getElementById('game-title').style.display = 'block';
     document.getElementById('menu-screen').style.display = 'flex';
     
-    // メニューに戻った時も綺麗な状態にリセット
     document.getElementById('display-box').innerHTML = 'STATUS : <span id="status-text" style="color: #FF9F1C; background-color: #FFEEDD;">READY</span>';
   }
 </script>
