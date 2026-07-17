@@ -1,10 +1,18 @@
 const express = require('express');
-const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ★ここがポイント！npm install不要でCORS（通信制限）を解除するコード
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
-app.use(cors());
 app.use(express.json());
 
 // ゲームデータを保持するメモリ
@@ -13,7 +21,7 @@ let rooms = {};
 
 // お題リスト
 const THEMES = [
-  "きのこの山 vs たけのこの里 どちらが優れているか？",
+  "きのきの山 vs たけのこの里 どちらが優れているか？",
   "犬派 vs 猫派 ペットにするならどっち？",
   "朝型 vs 夜型 人生が豊かになるのはどっち？",
   "お金 vs 愛 人生で本当に大切なのはどっち？",
@@ -157,7 +165,7 @@ const THEMES = [
   "教育において 才能 vs 努力 重要なのはどっち？",
   "勉強するなら 独学 vs 塾に通う",
   "電子黒板 vs 黒板 授業で使うならどっち？",
-  "オンライン授業 vs 対面授業 学べるのはどっち？",
+  "オンライン授業 vs 对面授業 学べるのはどっち？",
   "留年 vs 飛び級 才能を伸ばすならどっち？",
   "理系 vs 文系 学ぶならどっち？",
   "歴史を学ぶなら 人物中心 vs 事件中心",
@@ -191,7 +199,6 @@ const THEMES = [
   "レジ袋有料化 賛成 vs 反対",
   "フードロス削減 個人の意識 vs 企業の責任",
   "リサイクル 義務化すべき vs 任意にするべき",
-  "マイナンバーカード 推進すべき vs 反対",
   "消費税 増税すべき vs 減税すべき",
   "ベーシックインカム 導入すべき vs 反対",
   "死刑制度 廃止すべき vs 維持すべき",
@@ -275,7 +282,7 @@ app.get('/match', (req, res) => {
   }
 });
 
-// メッセージ送信API（自傷ダメージもここで処理）
+// メッセージ送信API
 app.post('/send-message', (req, res) => {
   const { roomName, sender, text, penaltyDamage } = req.body;
   const room = rooms[roomName];
@@ -285,7 +292,7 @@ app.post('/send-message', (req, res) => {
 
   // 1. 初速のペナルティダメージがある場合
   if (penaltyDamage !== undefined) {
-    const rawDamage = Math.ceil(penaltyDamage / 20); // クライアント側のダメージ(30の倍数)をサーバー用に変換
+    const rawDamage = Math.ceil(penaltyDamage / 20);
     if (room.hp[sender] !== undefined) {
       room.hp[sender] = Math.max(0, room.hp[sender] - rawDamage);
     }
@@ -296,7 +303,7 @@ app.post('/send-message', (req, res) => {
   if (text && text.trim() !== "") {
     room.messages.push({ sender, text });
     
-    // 通常送信時は相手に微小なランダムダメージ（5〜15）を与える
+    // 通常送信時は相手に微小なランダムダメージ（5〜15）
     const opponent = room.players.find(p => p !== sender);
     if (opponent && room.hp[opponent] !== undefined) {
       const damage = Math.floor(Math.random() * 11) + 5; 
