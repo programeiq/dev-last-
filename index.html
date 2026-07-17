@@ -56,31 +56,13 @@
     }
 
     #user-icon-slot {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      width: 100px;
-      height: 100px;
-      background-color: #CD853F; 
-      border: 3px solid #333333;
-      border-radius: 15px;
-      box-shadow: 3px 3px 0px #333333;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-      transition: transform 0.1s;
+      position: absolute; top: 20px; right: 20px; width: 100px; height: 100px;
+      background-color: #CD853F; border: 3px solid #333333; border-radius: 15px;
+      box-shadow: 3px 3px 0px #333333; cursor: pointer; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; overflow: hidden; transition: transform 0.1s;
     }
     #user-icon-slot:hover { transform: scale(1.05); }
-
-    #custom-icon-img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
+    #custom-icon-img { width: 100%; height: 100%; object-fit: cover; }
     #icon-item-label { 
       font-size: 11px; margin-top: 4px; color: #FFFFFF; font-weight: bold; 
       text-shadow: 1px 1px 0 #333333; background: rgba(0,0,0,0.5); padding: 2px 6px; 
@@ -105,16 +87,15 @@
 
     #theme-info { width: 100%; background-color: #FF7096; border: 2px solid #333333; border-radius: 12px; padding: 8px; text-align: center; color: white; font-weight: bold; margin-bottom: 5px; box-sizing: border-box; }
     
-    /* ⚠️ 警告インジケーター（考え中・打ってない時に赤く光る） */
-    #danger-indicator {
-      width: 100%; text-align: center; font-size: 13px; font-weight: bold; color: #FF477E;
-      background-color: #FFE3E3; border: 2px solid #FF477E; border-radius: 8px; padding: 4px;
-      margin-bottom: 8px; display: none; animation: blink 1s infinite alternate;
+    /* ⏱️ 反応時間メーター（打ち始めるまでの時間をリアルタイム表示） */
+    #timer-panel {
+      width: 100%; display: flex; justify-content: space-between; margin-bottom: 8px; gap: 5px;
     }
-    @keyframes blink {
-      0% { opacity: 0.5; }
-      100% { opacity: 1; }
+    .time-sub-box {
+      flex: 1; text-align: center; font-size: 13px; font-weight: bold; padding: 6px; border-radius: 8px; border: 2px solid #333333;
     }
+    #game-timer-box { background-color: #FFF385; color: #333333; }
+    #response-timer-box { background-color: #FF7675; color: white; }
 
     #hp-container { width: 100%; background-color: #333333; border: 2px solid #333333; border-radius: 10px; padding: 8px; margin-bottom: 10px; box-sizing: border-box; color: white; font-size: 12px; font-weight: bold; }
     .hp-bar-bg { width: 100%; background-color: #555555; height: 14px; border-radius: 7px; border: 1px solid #111; overflow: hidden; margin-top: 3px; }
@@ -174,11 +155,13 @@
 
   <div id="theme-info">
     <div id="current-theme" style="font-size: 18px;">お題: 読み込み中...</div>
-    <div id="timer-text" style="font-size: 14px; margin-top: 4px; color: #FFF385;">残り秒数: 180秒</div>
   </div>
 
-  <!-- ⚠️ 警告表示枠 -->
-  <div id="danger-indicator">⚠️ 早く入力し始めないと、自分の体力が削られるぞ！ ⚠️</div>
+  <!-- ⏱️ タイマー＆反応速度パネル -->
+  <div id="timer-panel">
+    <div id="game-timer-box" class="time-sub-box">試合残り: 180秒</div>
+    <div id="response-timer-box" class="time-sub-box">入力停止中（安全）</div>
+  </div>
 
   <div id="hp-container">
     <div style="display: flex; justify-content: space-between;">
@@ -207,12 +190,13 @@
   let lastMessageCount = 0; 
   let chatIntervalId = null;
   let timerIntervalId = null; 
-  let penaltyIntervalId = null; // ⏱️ ペナルティ用のタイマー
+  let responseMeasureIntervalId = null; // ⏱️ 打ち始めるまでの時間計測タイマー
   let remainingTime = 180; 
   let isGameOverFlag = false;
 
-  // 🩸 自傷ペナルティ用の状態管理
-  let isTyping = false; 
+  // ⏱️ 「打ち始めるまでの時間」システム用の変数
+  let elapsedSecondsBeforeType = 0; 
+  let hasStartedTypingThisTurn = true; // ターン開始時はtrue（まだ計測しない状態）にする
   let lastMyHP = 2000;
 
   let myUsername = localStorage.getItem('yururon_username') || '';
@@ -237,11 +221,9 @@
   function updateUserDataDisplay() {
     let lvText = myLevel >= 100 ? "MAX" : `Lv.${myLevel}`;
     let expText = myLevel >= 100 ? "MAX" : `EXP: ${myExp}/100`;
-    
     document.getElementById('user-badge').innerText = `${myUsername} [${lvText} (${expText})]`;
     document.getElementById('icon-item-label').innerText = currentLabel;
   }
-
   updateUserDataDisplay();
 
   function changeName() {
@@ -254,16 +236,13 @@
   }
 
   function openItemBox() {
-    let message = "👕 称号着せ替えクローゼット 👕\nレベルに応じて以下の称号を選べます。変更したい番号を半角数字で入力してね！\n\n";
-    
+    let message = "👕 称号着せ替えクローゼット 👕\n変更したい番号を半角数字で入力してね！\n\n";
     itemsList.forEach((item, index) => {
       const isUnlocked = myLevel >= item.lv;
       message += `${index + 1}: [${isUnlocked ? '🔓解放済' : '🔒Lv.' + item.lv + 'で解放'}] ${item.label}\n`;
     });
-
     let choice = prompt(message);
     let idx = parseInt(choice) - 1;
-
     if (idx >= 0 && idx < itemsList.length) {
       if (myLevel >= itemsList[idx].lv) {
         currentLabel = itemsList[idx].label;
@@ -271,47 +250,28 @@
         updateUserDataDisplay();
         document.getElementById('display-box').innerText = `称号を「${currentLabel}」に変更したよ！`;
       } else {
-        alert("🔒 その称号はレベルが足りないためまだロックされています！もっと戦おう！");
+        alert("🔒 レベルが足りません！");
       }
     }
   }
 
   function addExperience(amount) {
-    if (myLevel >= 100) {
-      document.getElementById('display-box').innerText = `🎉 戦闘終了！すでにレベルMAX（Lv.100）です！最強！`;
-      return; 
-    }
-
+    if (myLevel >= 100) return;
     myExp += amount;
     let leveledUp = false;
-    
     while (myExp >= 100 && myLevel < 100) {
       myExp -= 100;
       myLevel++;
       leveledUp = true;
-      
-      if (myLevel >= 100) {
-        myExp = 0;
-        break;
-      }
+      if (myLevel >= 100) { myExp = 0; break; }
     }
-
     localStorage.setItem('yururon_level', myLevel);
     localStorage.setItem('yururon_exp', myExp);
     updateUserDataDisplay();
-
-    let rewardText = `🎉 戦闘終了！ ${amount} EXP を獲得したよ！`;
-    if (leveledUp) {
-      rewardText += `\n🌟🌟 レベルアップ！！！ Lv.${myLevel} になりました！ 🌟🌟`;
-      if (myLevel === 100) {
-        rewardText += `\n👑 ついにレベル上限の【Lv.100】に到達しました！最強の称号「伝説のディベーター」が解放されたぞ！`;
-      }
-    }
-    document.getElementById('display-box').innerText = rewardText;
   }
 
   function showRule() {
-    document.getElementById('display-box').innerHTML = `【ゆるろんのルール説明】\n\n🟢 PLAYを押すとマッチングが始まるよ！\n🧠 お題が決まったら3分間のディベート開始！\n🥊 送信した「文字の数（×倍率）」だけ相手のHP（最大2000）を削れるぞ！\n⏱️ 【超重要】文字を打ち始めていない「考え中の時間」は、1秒ごとに自分のHPが10ずつ減るぞ！とにかく早く打ち始めよう！`;
+    document.getElementById('display-box').innerHTML = `【ゆるろんの新ルール】\n\n🧠 お題決定時、または送信後に「計測」がスタート！\n⏱️ キーボードを【打ち始めるまでの時間】が測られます！\n💥 1文字目を打った瞬間、迷った秒数×30のダメージが自分のHP（最大2000）に直撃！\n🥊 打ち始めた後はゆっくり考えて送信してOK！初速命！`;
   }
 
   function sendRequest(type) {
@@ -334,14 +294,16 @@
                 document.getElementById('room-title').innerText = `対戦部屋: ${myRoomName}`;
                 document.getElementById('current-theme').innerText = `お題：${currentTheme}`;
                 
-                // 🩸 ライフを最大2000に変更！
                 document.getElementById('my-hp-label').innerText = `${myUsername}: 2000`;
                 document.getElementById('enemy-hp-label').innerText = `相手: 2000`;
                 document.getElementById('my-hp-bar').style.width = '100%';
                 document.getElementById('enemy-hp-bar').style.width = '100%';
                 isGameOverFlag = false;
-                isTyping = false;
                 lastMyHP = 2000;
+
+                // ⏱️ バトル開始！最初はまだ打っていないので計測スタート状態へ
+                hasStartedTypingThisTurn = false; 
+                elapsedSecondsBeforeType = 0;
 
                 setTimeout(() => {
                   document.getElementById('menu-screen').style.display = 'none';
@@ -350,7 +312,7 @@
                   
                   chatIntervalId = setInterval(updateChatLog, 1000);
                   startTimer(); 
-                  startPenaltyTimer(); // 🩸 自傷ペナルティタイマーを起動
+                  startResponseTimer(); // ⏱️ 打ち始めるまでの時間計測スタート！
                 }, 1000);
               }
             });
@@ -358,8 +320,7 @@
 
   function startTimer() {
     remainingTime = 180; 
-    document.getElementById('timer-text').innerText = `残り秒数: ${remainingTime}秒`;
-    document.getElementById('timer-text').style.color = '#FFF385';
+    document.getElementById('game-timer-box').innerText = `試合残り: ${remainingTime}秒`;
     document.getElementById('message-input').disabled = false;
     document.getElementById('send-btn').disabled = false;
 
@@ -369,48 +330,53 @@
       if (remainingTime <= 0) {
         endGame("⏱️ タイムアップ！引き分け！", 20); 
       } else {
-        document.getElementById('timer-text').innerText = `残り秒数: ${remainingTime}秒`;
-        if (remainingTime <= 15) { document.getElementById('timer-text').style.color = '#FF477E'; }
+        document.getElementById('game-timer-box').innerText = `試合残り: ${remainingTime}秒`;
       }
     }, 1000);
   }
 
-  // 🩸 【新規】放置・考え込みペナルティタイマー
-  function startPenaltyTimer() {
+  // ⏱️ 【完全新規】打ち始めるまでの時間を図るリアルタイムタイマー！
+  function startResponseTimer() {
     const inputField = document.getElementById('message-input');
-    const dangerIndicator = document.getElementById('danger-indicator');
+    const responseBox = document.getElementById('response-timer-box');
 
-    // キーボードに入力を始めたら「タイピング中」とする
+    // キーボードに入力を始めた（1文字目が入った）瞬間のイベント
     inputField.oninput = () => {
-      if (inputField.value.length > 0) {
-        isTyping = true;
-        dangerIndicator.style.display = 'none';
-      } else {
-        isTyping = false;
+      if (!hasStartedTypingThisTurn && inputField.value.length > 0) {
+        // 🛑 打ち始めたので計測ストップ！
+        hasStartedTypingThisTurn = true; 
+        
+        // 💥 【重要】迷った時間（秒）× 30 の大ダメージが自分に直撃！
+        let penaltyDamage = elapsedSecondsBeforeType * 30; 
+        
+        if (penaltyDamage > 0) {
+          lastMyHP = Math.max(0, lastMyHP - penaltyDamage);
+          responseBox.innerText = `💥 初速遅れで -${penaltyDamage} ダメージ！`;
+          responseBox.style.backgroundColor = "#D63031";
+
+          // サーバーに自分のHPが減ったことを伝える空の通信用リクエスト
+          fetch(`${SERVER_URL}/send-message`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ roomName: myRoomName, sender: myUsername, text: "", penaltyDamage: penaltyDamage })
+          });
+        } else {
+          responseBox.innerText = `⚡ ナイス初速！ノーダメージ！`;
+          responseBox.style.backgroundColor = "#2ECC71";
+        }
       }
     };
 
-    penaltyIntervalId = setInterval(() => {
+    // 1秒ごとに「まだ打っていない時間」をカウントアップ
+    responseMeasureIntervalId = setInterval(() => {
       if (isGameOverFlag) return;
 
-      // 文字を打っていない（入力欄が空、かつタイピング中ではない）場合
-      if (!isTyping || inputField.value.trim() === '') {
-        isTyping = false; 
-        dangerIndicator.style.display = 'block'; // 警告を出す
-
-        // 自分のHPを10減らす
-        lastMyHP = Math.max(0, lastMyHP - 10);
-        
-        // サーバーへリアルタイムにペナルティHPを反映するリクエスト
-        fetch(`${SERVER_URL}/send-message`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ roomName: myRoomName, sender: myUsername, text: "", penaltyDamage: 10 })
-        });
-      } else {
-        dangerIndicator.style.display = 'none';
+      if (!hasStartedTypingThisTurn) {
+        elapsedSecondsBeforeType++;
+        responseBox.innerText = `🚨 早く打て！迷い時間: ${elapsedSecondsBeforeType}秒`;
+        responseBox.style.backgroundColor = "#E17055";
       }
-    }, 1000); // 1秒ごとに判定
+    }, 1000);
   }
 
   function sendMessage() {
@@ -418,9 +384,11 @@
     const text = input.value.trim();
     if (!text || !myRoomName || remainingTime <= 0 || isGameOverFlag) return; 
 
-    // 送信したらタイピング状態をリセット（またすぐ打たないと削られる！）
-    isTyping = false;
-    document.getElementById('danger-indicator').style.display = 'block';
+    // 送信ボタンを押したら、次のターンのための計測リセット！
+    hasStartedTypingThisTurn = false; 
+    elapsedSecondsBeforeType = 0;
+    document.getElementById('response-timer-box').innerText = `🚨 次の入力を早く始めろ！`;
+    document.getElementById('response-timer-box').style.backgroundColor = "#E17055";
 
     fetch(`${SERVER_URL}/send-message`, {
       method: 'POST',
@@ -438,20 +406,17 @@
               const messages = data.messages;
               const hpData = data.hpData;
 
-              // 初期HPが2000基準で同期されるよう処理
               let myHP = 2000;
               let enemyHP = 2000;
               let enemyName = "相手";
 
               Object.keys(hpData).forEach(player => {
-                // サーバーから100分率（%）ではなく、2000基準の最大体力として同期
-                // ※サーバーが旧仕様の100HPを返してきた場合のために、20倍して2000スケールに補正します
                 let currentRawHP = hpData[player];
                 let actualHP = currentRawHP <= 100 ? currentRawHP * 20 : currentRawHP;
 
                 if (player === myUsername) { 
                   myHP = actualHP; 
-                  // 自傷ダメージがあったためローカル値を優先同期
+                  // ローカルで測定した自傷ダメージを最優先で同期する
                   if (lastMyHP < myHP) { myHP = lastMyHP; } else { lastMyHP = myHP; }
                 } 
                 else { 
@@ -460,7 +425,6 @@
                 }
               });
 
-              // 画面へのHP数値とバーの割合（最大2000）の表示
               let myHPPercent = (myHP / 2000) * 100;
               let enemyHPPercent = (enemyHP / 2000) * 100;
 
@@ -482,7 +446,7 @@
               const chatBox = document.getElementById('chat-box');
               chatBox.innerHTML = ''; 
 
-              // 空のペナルティ用通信メッセージはログに表示しない
+              // 自傷同期用の空メッセージは非表示
               messages.forEach(msg => {
                 if (msg.text === "") return; 
 
@@ -511,10 +475,10 @@
   function endGame(resultMessage, expReward) {
     isGameOverFlag = true;
     clearInterval(timerIntervalId);
-    clearInterval(penaltyIntervalId); // 🩸 ペナルティタイマーを停止
-    document.getElementById('danger-indicator').style.display = 'none';
-    document.getElementById('timer-text').innerText = resultMessage;
-    document.getElementById('timer-text').style.color = '#FFF385';
+    clearInterval(responseMeasureIntervalId); // ⏱️ 計測タイマー停止
+    document.getElementById('game-timer-box').innerText = "試合終了";
+    document.getElementById('response-timer-box').innerText = "STOP";
+    document.getElementById('response-timer-box').style.backgroundColor = "#74B9FF";
     document.getElementById('message-input').disabled = true;
     document.getElementById('send-btn').disabled = true;
 
@@ -530,11 +494,10 @@
   function goBackToMenu() {
     if (chatIntervalId) { clearInterval(chatIntervalId); }
     if (timerIntervalId) { clearInterval(timerIntervalId); } 
-    if (penaltyIntervalId) { clearInterval(penaltyIntervalId); } // 🩸 タイマーリセット
+    if (responseMeasureIntervalId) { clearInterval(responseMeasureIntervalId); } 
     myRoomName = '';
     lastMessageCount = 0;
     document.getElementById('chat-box').innerHTML = '';
-    document.getElementById('danger-indicator').style.display = 'none';
 
     document.getElementById('debate-screen').style.display = 'none';
     document.getElementById('header-container').style.display = 'flex';
