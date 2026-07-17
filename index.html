@@ -205,12 +205,12 @@
   let currentLabel = localStorage.getItem('yururon_label') || 'ゆるろん初心者';
 
   const itemsList = [
-    { lv: 1, label: '🥚 ゆるろん初心者' },
-    { lv: 10, label: '🐣 口喧嘩 of ヒヨコ' },
-    { lv: 30, label: '🐓 論破 of ニワトリ' },
-    { lv: 50, label: '🔥 弁論大会 of 覇者' },
-    { lv: 80, label: '👑 論理 of 絶対神' },
-    { lv: 100, label: '🐉 伝説 of ディベーター' }
+    { lv: 1, label: 'ゆるろん初心者' },
+    { lv: 10, label: '口喧嘩 of ヒヨコ' },
+    { lv: 30, label: '論破 of ニワトリ' },
+    { lv: 50, label: '弁論大会 of 覇者' },
+    { lv: 80, label: '論理 of 絶対神' },
+    { lv: 100, label: 伝説 of ディベーター' }
   ];
 
   if (!myUsername) {
@@ -236,10 +236,10 @@
   }
 
   function openItemBox() {
-    let message = "👕 称号着せ替えクローゼット 👕\n変更したい番号を半角数字で入力してね！\n\n";
+    let message = "称号着せ替えクローゼット \n変更したい番号を半角数字で入力してね！\n\n";
     itemsList.forEach((item, index) => {
       const isUnlocked = myLevel >= item.lv;
-      message += `${index + 1}: [${isUnlocked ? '🔓解放済' : '🔒Lv.' + item.lv + 'で解放'}] ${item.label}\n`;
+      message += `${index + 1}: [${isUnlocked ? '解放済' : 'Lv.' + item.lv + 'で解放'}] ${item.label}\n`;
     });
     let choice = prompt(message);
     let idx = parseInt(choice) - 1;
@@ -250,7 +250,7 @@
         updateUserDataDisplay();
         document.getElementById('display-box').innerText = `称号を「${currentLabel}」に変更したよ！`;
       } else {
-        alert("🔒 レベルが足りません！");
+        alert("レベルが足りません！");
       }
     }
   }
@@ -271,7 +271,7 @@
   }
 
   function showRule() {
-    document.getElementById('display-box').innerHTML = `【ゆるろんの新ルール】\n\n🧠 お題決定時、または送信後に「計測」がスタート！\n⏱️ キーボードを【打ち始めるまでの時間】が測られます！\n💥 1文字目を打った瞬間、迷った秒数×30のダメージが自分のHP（最大2000）に直撃！\n🥊 打ち始めた後はゆっくり考えて送信してOK！初速命！`;
+    document.getElementById('display-box').innerHTML = `【ゆるろんの新ルール】\n\n お題決定時、または送信後に「計測」がスタート！\n⏱️ キーボードを【打ち始めるまでの時間】が測られます！\n💥 1文字目を打った瞬間、迷った秒数×30のダメージが自分のHP（最大2000）に直撃！\n🥊 打ち始めた後はゆっくり考えて送信してOK！初速命！`;
   }
 
   function sendRequest(type) {
@@ -282,7 +282,7 @@
             .then(response => response.text())
             .then(data => {
               if (type === 'ranking') {
-                displayBox.innerHTML = `🏆 ランキング 🏆\n\n${data}`;
+                displayBox.innerHTML = ` ランキング \n\n${data}`;
                 return;
               }
 
@@ -312,7 +312,7 @@
                   
                   chatIntervalId = setInterval(updateChatLog, 1000);
                   startTimer(); 
-                  startResponseTimer(); // ⏱️ 打ち始めるまでの時間計測スタート！
+                  startResponseTimer(); //  打ち始めるまでの時間計測スタート！
                 }, 1000);
               }
             });
@@ -328,14 +328,14 @@
       if (isGameOverFlag) return;
       remainingTime--;
       if (remainingTime <= 0) {
-        endGame("⏱️ タイムアップ！引き分け！", 20); 
+        endGame(" タイムアップ！引き分け！", 20); 
       } else {
         document.getElementById('game-timer-box').innerText = `試合残り: ${remainingTime}秒`;
       }
     }, 1000);
   }
 
-  // ⏱️ 【完全新規】打ち始めるまでの時間を図るリアルタイムタイマー！
+  //  【完全新規】打ち始めるまでの時間を図るリアルタイムタイマー！
   function startResponseTimer() {
     const inputField = document.getElementById('message-input');
     const responseBox = document.getElementById('response-timer-box');
@@ -343,7 +343,7 @@
     // キーボードに入力を始めた（1文字目が入った）瞬間のイベント
     inputField.oninput = () => {
       if (!hasStartedTypingThisTurn && inputField.value.length > 0) {
-        // 🛑 打ち始めたので計測ストップ！
+        // 打ち始めたので計測ストップ！
         hasStartedTypingThisTurn = true; 
         
         // 💥 【重要】迷った時間（秒）× 30 の大ダメージが自分に直撃！
@@ -351,7 +351,7 @@
         
         if (penaltyDamage > 0) {
           lastMyHP = Math.max(0, lastMyHP - penaltyDamage);
-          responseBox.innerText = `💥 初速遅れで -${penaltyDamage} ダメージ！`;
+          responseBox.innerText = ` 初速遅れで -${penaltyDamage} ダメージ！`;
           responseBox.style.backgroundColor = "#D63031";
 
           // サーバーに自分のHPが減ったことを伝える空の通信用リクエスト
@@ -361,7 +361,7 @@
             body: JSON.stringify({ roomName: myRoomName, sender: myUsername, text: "", penaltyDamage: penaltyDamage })
           });
         } else {
-          responseBox.innerText = `⚡ ナイス初速！ノーダメージ！`;
+          responseBox.innerText = ` ナイス初速！ノーダメージ！`;
           responseBox.style.backgroundColor = "#2ECC71";
         }
       }
@@ -373,7 +373,7 @@
 
       if (!hasStartedTypingThisTurn) {
         elapsedSecondsBeforeType++;
-        responseBox.innerText = `🚨 早く打て！迷い時間: ${elapsedSecondsBeforeType}秒`;
+        responseBox.innerText = ` 早く打て！迷い時間: ${elapsedSecondsBeforeType}秒`;
         responseBox.style.backgroundColor = "#E17055";
       }
     }, 1000);
@@ -387,7 +387,7 @@
     // 送信ボタンを押したら、次のターンのための計測リセット！
     hasStartedTypingThisTurn = false; 
     elapsedSecondsBeforeType = 0;
-    document.getElementById('response-timer-box').innerText = `🚨 次の入力を早く始めろ！`;
+    document.getElementById('response-timer-box').innerText = ` 次の入力を早く始めろ！`;
     document.getElementById('response-timer-box').style.backgroundColor = "#E17055";
 
     fetch(`${SERVER_URL}/send-message`, {
@@ -437,9 +437,9 @@
               document.getElementById('enemy-hp-bar').style.backgroundColor = enemyHPPercent <= 30 ? '#FF477E' : '#06D6A0';
 
               if (!isGameOverFlag) {
-                if (myHP <= 0 && enemyHP <= 0) { endGame("💥 相打ち！ダブルK.O.！", 20); } 
-                else if (myHP <= 0) { endGame(`💀 K.O.！ ${enemyName} の勝ち！`, 20); } 
-                else if (enemyHP <= 0) { endGame(`🏆 K.O.！ ${myUsername} の勝ち！`, 50); } 
+                if (myHP <= 0 && enemyHP <= 0) { endGame(" 相打ち！ダブルK.O.！", 20); } 
+                else if (myHP <= 0) { endGame(` K.O.！ ${enemyName} の勝ち！`, 20); } 
+                else if (enemyHP <= 0) { endGame(` K.O.！ ${myUsername} の勝ち！`, 50); } 
               }
 
               if (messages.length === lastMessageCount) return;
