@@ -1,607 +1,330 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <title>ゆるろん</title>
-  <style>
-    /* 全体をポップなスカイブルーに */
-    body {
-      background-color: #00A2FF;
-      color: #333333;
-      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
-      overflow: hidden;
-    }
+const express = require('express');
+const cors = require('cors');
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-    /* PC大画面用のメインコンテナ */
-    #menu-screen {
-      position: relative;
-      width: 90%;
-      max-width: 1000px;
-      height: 550px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      align-items: center;
-      box-sizing: border-box;
-      padding: 20px;
-    }
+app.use(cors());
+app.use(express.json());
 
-    /* 左上のユーザー情報エリア (参考画像インスパイア) */
-    #user-profile-area {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      display: flex;
-      align-items: center;
-      gap: 15px;
-      background: rgba(255, 255, 255, 0.2);
-      padding: 10px 20px;
-      border-radius: 50px;
-      border: 2px solid #FFFFFF;
-      color: #FFFFFF;
-    }
+// ゲームデータを保持するメモリ
+let waitingPlayer = null;
+let rooms = {};
 
-    /* 丸型のクローゼット兼アイコンスロット */
-    #user-icon-slot {
-      width: 60px;
-      height: 60px;
-      background-color: #FFFFFF;
-      border-radius: 50%;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-      transition: transform 0.1s;
-      border: 2px solid #00A2FF;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
-    #user-icon-slot:hover { transform: scale(1.05); }
-    #custom-icon-img { width: 100%; height: 100%; object-fit: cover; }
-    #fallback-text { font-size: 10px; font-weight: bold; color: #00A2FF; text-align: center; }
+// お題リスト
+const THEMES = [
+  "きのこの山 vs たけのこの里 どちらが優れているか？",
+  "犬派 vs 猫派 ペットにするならどっち？",
+  "朝型 vs 夜型 人生が豊かになるのはどっち？",
+  "お金 vs 愛 人生で本当に大切なのはどっち？",
+  "うどん vs そば 日本を代表する麺類はどっち？",
+  "インドア vs アウトドア 休日の過ごし方はどっちが最高？",
+  "ご飯派 vs パン派 最高の朝食はどっち？",
+  "コーヒー派 vs 紅茶派 一日の始まりに飲むならどっち？",
+  "夏 vs 冬 快適に過ごせる季節はどっち？",
+  "海 vs 山 最高の休暇を過ごすならどっち？",
+  "都会 vs 田舎 住んで幸せなのはどっち？",
+  "電話 vs メール 連絡を取るならどっちが便利？",
+  "紙の本 vs 電子書籍 読書をするならどっち？",
+  "自炊 vs 外食 お金が貯まり、豊かなのはどっち？",
+  "目覚まし時計 vs スマホの目覚まし 朝起きるならどっち？",
+  "温泉 vs 遊園地 週末の旅行で行くならどっち？",
+  "スニーカー vs 革靴 毎日履くならどっち？",
+  "リュック vs ショルダーバッグ 普段使いならどっち？",
+  "メガネ vs コンタクト 視力矯正するならどっち？",
+  "腕時計 vs スマホ 時間を確認するならどっち？",
+  "傘 vs 雨合羽 雨の日の移動はどっちが快適？",
+  "目玉焼き vs 卵焼き 朝食の卵料理ならどっち？",
+  "ショートケーキ vs チーズケーキ 好きなケーキはどっち？",
+  "ハンバーガー vs ピザ ファストフードならどっち？",
+  "ビール vs 日本酒 居酒屋で最初に頼むならどっち？",
+  "焼肉 vs 寿司 ご褒美に食べるならどっち？",
+  "カレー vs ラーメン 毎日でも食べたいのはどっち？",
+  "餃子 vs 焼売 中華の定番ならどっち？",
+  "ラーメン 醤油 vs 味噌 一番好きな味はどっち？",
+  "ラーメン とんこつ vs 塩 スープが美味しいのはどっち？",
+  "アイスクリーム vs かき氷 夏に食べたい冷たいスイーツはどっち？",
+  "和菓子 vs 洋菓子 毎日のおやつならどっち？",
+  "おにぎり vs サンドイッチ ピクニックに持っていくならどっち？",
+  "唐揚げ vs フライドチキン 定番の揚げ物はどっち？",
+  "納豆 vs 豆腐 朝食の健康食材ならどっち？",
+  "マヨネーズ vs ケチャップ 何にでもかけたいのはどっち？",
+  "醤油 vs ソース 食卓に欠かせない調味料はどっち？",
+  "目玉焼きにかけるなら 醤油 vs ソース",
+  "納豆に入れるなら 生卵 vs キムチ",
+  "ポテトチップス うすしお vs コンソメ どっちが好き？",
+  "たこ焼き vs お好み焼き 大阪名物ならどっち？",
+  "焼きそば vs チャーハン 家で作りやすいランチはどっち？",
+  "目覚ましは一回 vs スヌーズ機能を使う",
+  "休日は予定を立てる vs 立てないで気ままに過ごす",
+  "旅行は国内 vs 海外 楽しむならどっち？",
+  "旅行は計画的に行く vs 行き当たりばったり",
+  "荷物は多い派 vs 少ない派 安心して旅行できるのはどっち？",
+  "テレビ vs YouTube 情報を得るならどっち？",
+  "テレビ vs ネットフリックス 休日見るならどっち？",
+  "映画館 vs 自宅のテレビ 映画を見るならどっち？",
+  "スマホ Android vs iPhone 使うならどっち？",
+  "パソコン Mac vs Windows 選ぶならどっち？",
+  "SNS Instagram vs X（旧Twitter） 使うならどっち？",
+  "ゲームはスマホ vs 据え置き型 楽しむならどっち？",
+  "ゲーム RPG vs アクション プレイするならどっち？",
+  "音楽を聴くなら ストリーミング vs CD",
+  "電子マネー vs 現金 買い物するならどっち？",
+  "クレジットカード vs デビットカード 使うならどっち？",
+  "ネットショッピング vs 店舗での買い物 便利なのはどっち？",
+  "日記は毎日つける vs つけない",
+  "家計簿はアプリ vs ノート",
+  "掃除機 vs ほうき 部屋の掃除をするならどっち？",
+  "洗濯機は縦型 vs ドラム式 買うならどっち？",
+  "エアコン vs 扇風機 夏を乗り切るならどっち？",
+  "こたつ vs 電気カーペット 冬に欲しいのはどっち？",
+  "掛け布団 羽根布団 vs 綿布団 暖かいのはどっち？",
+  "枕は柔らかい vs 固い",
+  "シャワー派 vs お風呂（湯船）派 一日の疲れが取れるのはどっち？",
+  "歯磨き粉 ミント vs 塩味 使うならどっち？",
+  "シャンプー リンスイン vs 別々 髪に良いのはどっち？",
+  "ドライヤー 自然乾燥 vs ブロードライ",
+  "髭剃り 電動シェーバー vs カミソリ",
+  "石鹸派 vs ボディソープ派",
+  "ハンドソープ 泡タイプ vs 液体タイプ",
+  "化粧品 プチプラ vs デパコス 選ぶならどっち？",
+  "香水 つける派 vs つけない派",
+  "髪型 ロング vs ショート 似合うのはどっち？",
+  "服装 パンツ派 vs スカート派",
+  "財布 長財布 vs 二つ折り 財布ならどっち？",
+  "傘 ビニール傘 vs 折りたたみ傘 持ち歩くならどっち？",
+  "エコバッグ 布製 vs ナイロン製",
+  "カレンダー アプリ vs 紙の手帳 スケジュール管理はどっち？",
+  "ノートは方眼 vs 無地",
+  "ボールペン 黒 vs 青",
+  "消しゴム vs 修正テープ",
+  "鉛筆 vs シャープペンシル 使うならどっち？",
+  "ハサミ vs カッター 用途に合わせて使うならどっち？",
+  "ゴミ箱 木製 vs プラスチック",
+  "ハンガー 木製 vs プラスチック",
+  "時計 アナログ vs デジタル",
+  "靴ひもを結ぶ vs スリッポン",
+  "ベルト 革 vs 布",
+  "靴下 くるぶし丈 vs ロング丈",
+  "マフラー vs ネックウォーマー 冬の防寒ならどっち？",
+  "手袋 指あり vs 指なし",
+  "サングラス かける派 vs かけない派",
+  "コンタクト 1日使い捨て vs 2週間交換",
+  "水はミネラルウォーター vs 水道水",
+  "結婚するなら 恋愛結婚 vs お見合い結婚",
+  "恋人に求めるのは 経済力 vs 性格の良さ",
+  "恋人の条件 優先すべきは 外見 vs 内面",
+  "恋人とは 毎日連絡を取りたい vs たまの連絡でいい",
+  "デートの支払いは 割り勘 vs おごり",
+  "記念日を祝うのは サプライズ vs 事前に相談して決定",
+  "友達は 少数精鋭 vs 多人数でワイワイ",
+  "友達に求めるのは 優しさ vs 面白さ",
+  "親友とは 毎日話す vs たまに会うくらいが良い",
+  "怒るなら 感情を爆発させる vs 冷静に理論的に話す",
+  "ケンカした時 謝るのは 自分から vs 相手から",
+  "恋人のスマホ 見る派 vs 見ない派",
+  "結婚相手に求めるのは 思いやり vs 経済力",
+  "結婚したら 共働き vs 専業主婦（夫）",
+  "子育て 褒めて伸ばす vs 厳しくしつける",
+  "子供には ペットを飼わせるべきか vs 飼わせないべきか",
+  "習い事は スポーツ vs 芸術（音楽など）",
+  "休日の家族サービス 子供と遊ぶ vs 家族でゆっくり過ごす",
+  "夫婦の財布は 一緒 vs 別々",
+  "義理の実家との付き合いは 頻繁に会う vs 距離を置く",
+  "住むなら 持ち家 vs 賃貸",
+  "親の介護は 自宅で看る vs 施設に預ける",
+  "ペットの名前 人間っぽい vs ペットらしい",
+  "休日の過ごし方 家族優先 vs 自分優先",
+  "友達を作るなら 職場 vs 趣味のサークル",
+  "恋愛において 追う側 vs 追われる側",
+  "恋人へのプレゼント サプライズ vs 欲しいものを聞く",
+  "プロポーズは 言葉 vs 手紙・贈り物",
+  "浮気は 一回の過ちでも許せる vs 許せない",
+  "元恋人とは 友達になれる vs なれない",
+  "デートの行き先は 毎回決める vs 毎回新しい場所",
+  "休日のランチは 家で食べる vs 外に食べに行く",
+  "休日のディナーは 自炊 vs 外食",
+  "同棲は 結婚前にすべきか vs すべきではないか",
+  "遠距離恋愛は 成立する vs 成立しない",
+  "結婚式は 派手に挙げる vs 地味に行う（または挙げない）",
+  "子どものスマホ 制限する vs 自由に使う",
+  "大学へ行くべきか vs 就職するべきか",
+  "高校生のアルバイト 許可するべき vs 禁止するべき",
+  "学生の宿題 必要 vs 不要",
+  "制服 必要 vs 不要",
+  "テストの順位 発表すべき vs 発表すべきではない",
+  "部活動 全員参加 vs 自由参加",
+  "教育において 才能 vs 努力 重要なのはどっち？",
+  "勉強するなら 独学 vs 塾に通う",
+  "電子黒板 vs 黒板 授業で使うならどっち？",
+  "オンライン授業 vs 対面授業 学べるのはどっち？",
+  "留年 vs 飛び級 才能を伸ばすならどっち？",
+  "理系 vs 文系 学ぶならどっち？",
+  "歴史を学ぶなら 人物中心 vs 事件中心",
+  "読書感想文 必要 vs 不要",
+  "修学旅行 国内 vs 海外",
+  "修学旅行 行事としての意義がある vs ない",
+  "給食 vs お弁当 どちらが良いか？",
+  "学校の掃除 生徒がやる vs 業者がやる",
+  "校則は 厳しいほうがいい vs 自由であるべき",
+  "先生に求めるのは 指導力 vs 優しさ",
+  "学歴社会は 今も存在する vs 存在しない",
+  "就職するなら 大企業 vs 中小企業",
+  "仕事に求めるのは やりがい vs 収入",
+  "副業 推進するべき vs 禁止するべき",
+  "リモートワーク vs 出社 働きやすいのはどっち？",
+  "昇進するなら 年功序列 vs 成果主義",
+  "フリーランス vs 会社員 幸せな働き方はどっち？",
+  "定年制度は 廃止すべき vs 維持するべき",
+  "週休3日制 賛成 vs 反対",
+  "AIは人間の仕事を奪うか vs 共存できるか",
+  "AIによる絵画や小説 芸術として認める vs 認めない",
+  "キャッシュレス社会 賛成 vs 反対",
+  "自動運転の普及 賛成 vs 反対",
+  "仮想通貨（暗号資産）の未来 有望 vs バブル",
+  "SNSの実名制 賛成 vs 反対",
+  "ロボットの介護 賛成 vs 反対",
+  "宇宙開発 優先すべき vs 地球環境保護を優先すべき",
+  "環境問題 優先すべき vs 経済成長を優先すべき",
+  "原子力発電 必要 vs 不要",
+  "プラスチックの削減 賛成 vs 反対",
+  "レジ袋有料化 賛成 vs 反対",
+  "フードロス削減 個人の意識 vs 企業の責任",
+  "リサイクル 義務化すべき vs 任意にするべき",
+  "マイナンバーカード 推進すべき vs 反対",
+  "消費税 増税すべき vs 減税すべき",
+  "ベーシックインカム 導入すべき vs 反対",
+  "死刑制度 廃止すべき vs 維持すべき",
+  "裁判員制度 賛成 vs 反対",
+  "選挙の投票率向上 罰則を設けるべき vs 義務化すべきではない",
+  "移民の受け入れ 賛成 vs 反対",
+  "女性専用車両 必要 vs 不要",
+  "夫婦別姓 導入すべき vs 反対",
+  "安楽死 認めるべき vs 認めるべきではない",
+  "同性婚 認めるべき vs 反対",
+  "ボランティア 義務化するべき vs 任意であるべき",
+  "タバコは全面禁止すべきか vs 分煙でよい",
+  "選挙権の年齢 18歳 vs 20歳",
+  "定年退職の年齢 引き上げるべき vs 引き下げるべき",
+  "無人島に一つだけ持っていくなら ナイフ vs 本",
+  "タイムマシンで行くなら 過去 vs 未来",
+  "超能力を手に入れるなら タイムトラベル vs 瞬間移動",
+  "魔法が一つだけ使えるなら 空を飛ぶ vs 病気を治す",
+  "透明人間になれるなら 悪用する vs 善行に使う",
+  "不老不死になりたいか vs 人生の長さに限りがあるべきか",
+  "もし宝くじで3億円当たったら すぐ使う vs 貯金する",
+  "自分の性格 変えられるなら 変えたい vs 変えたくない",
+  "動物と話せるなら 虫と話す vs 哺乳類と話す",
+  "生まれ変わるなら 男性 vs 女性",
+  "生まれ変わるなら 日本人 vs 外国人",
+  "宝くじ 買う派 vs 買わない派",
+  "人生 お金 vs 経験",
+  "人生 成功 vs 安定",
+  "もし地球最後の日なら 美味しいものを食べる vs 家族と過ごす",
+  "犬 vs 猫 あなたが飼うならどっち？",
+  "一生どちらかしか食べられないなら 肉 vs 魚",
+  "一生どちらかしか飲めないなら コーヒー vs お茶",
+  "世界平和 vs 科学の発展 優先すべきはどっち？",
+  "天才 vs 努力家 成功するのはどっち？"
+];
 
-    #user-info-text {
-      display: flex;
-      flex-direction: column;
-    }
-    #game-title { font-size: 22px; font-weight: bold; margin: 0; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
-    #user-badge { font-size: 13px; font-weight: bold; opacity: 0.9; }
-    #icon-item-label { font-size: 11px; background: #FFFFFF; color: #00A2FF; padding: 2px 8px; border-radius: 10px; font-weight: bold; margin-top: 4px; width: fit-content; }
+// サーバー起動チェック用
+app.get('/', (req, res) => {
+  res.send('Yururon Game Server is Running!');
+});
 
-    /* 右側の縦並びメニューボタン群 (参考画像インスパイア) */
-    .right-menu-container {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      z-index: 10;
-    }
+// ランキング（サンプル）
+app.get('/ranking', (req, res) => {
+  res.send("1位: 伝説の論客A\n2位: ゆる論破王B\n3位: ひよこディベーターC");
+});
 
-    .side-btn {
-      width: 70px;
-      height: 70px;
-      border-radius: 50%;
-      border: 3px solid #FFFFFF;
-      font-weight: bold;
-      font-size: 13px;
-      cursor: pointer;
-      transition: all 0.1s ease;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.15);
-      outline: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .side-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 8px rgba(0,0,0,0.2); }
-    .side-btn:active { transform: translateY(2px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-
-    .btn-settings { background-color: #FF7675; color: white; }
-    .btn-ranking { background-color: #FFF385; color: #333333; border-color: #333333; }
-    .btn-rule { background-color: #A29BFE; color: white; }
-
-    /* 中央の巨大な「VS」吹き出しロゴ (参考画像再現) */
-    #vs-logo-container {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-top: 40px;
-    }
-
-    .vs-bubble {
-      position: relative;
-      width: 180px;
-      height: 180px;
-      background: #FFFFFF;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 70px;
-      font-weight: 900;
-      color: #00A2FF;
-      box-shadow: 0 10px 20px rgba(0,0,0,0.15);
-    }
-    /* 吹き出しのしっぽ部分 */
-    .vs-bubble:after {
-      content: '';
-      position: absolute;
-      bottom: -10px;
-      left: 30px;
-      border-width: 20px 20px 0;
-      border-style: solid;
-      border-color: #FFFFFF transparent;
-      display: block;
-      width: 0;
-    }
-
-    /* 下部の通知・ステータス表示エリア */
-    #display-box {
-      background: rgba(255, 255, 255, 0.9);
-      border: 2px solid #FFFFFF;
-      border-radius: 15px;
-      padding: 15px 30px;
-      font-size: 18px;
-      font-weight: bold;
-      text-align: center;
-      white-space: pre-wrap;
-      box-shadow: 0 6px 15px rgba(0,0,0,0.1);
-      width: 60%;
-      margin-bottom: 20px;
-    }
-
-    /* 下部のデカマッチングボタン (参考画像インスパイア) */
-    .bottom-btn-container {
-      width: 80%;
-      max-width: 600px;
-      margin-bottom: 10px;
-    }
-
-    .btn-play {
-      width: 100%;
-      background-color: #FFFFFF;
-      color: #00A2FF;
-      border: 4px solid #FFFFFF;
-      padding: 18px 0;
-      font-size: 26px;
-      font-weight: bold;
-      cursor: pointer;
-      border-radius: 20px;
-      box-shadow: 0 6px 15px rgba(0,0,0,0.15);
-      transition: all 0.2s ease;
-    }
-    .btn-play:hover { background-color: #F0F8FF; transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
-    .btn-play:active { transform: translateY(2px); box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
-
-
-    /* --- バトル画面のPC向けポップ調整 --- */
-    #debate-screen {
-      display: none; flex-direction: column; align-items: center; width: 95%; max-width: 700px;
-      height: 85vh; border: 4px solid #FFFFFF; border-radius: 25px; background-color: #54A0FF; padding: 20px; box-shadow: 0 12px 24px rgba(0,0,0,0.15); box-sizing: border-box;
-    }
-
-    #theme-info { width: 100%; background-color: #FF7675; border: 3px solid #FFFFFF; border-radius: 15px; padding: 12px; text-align: center; color: white; font-weight: bold; margin-bottom: 10px; box-sizing: border-box; }
+// マッチングAPI
+app.get('/match', (req, res) => {
+  if (waitingPlayer) {
+    const roomName = `room_${Date.now()}`;
+    const selectedTheme = THEMES[Math.floor(Math.random() * THEMES.length)];
     
-    #timer-panel { width: 100%; display: flex; justify-content: space-between; margin-bottom: 10px; gap: 10px; }
-    .time-sub-box { flex: 1; text-align: center; font-size: 14px; font-weight: bold; padding: 8px; border-radius: 10px; border: 2px solid #FFFFFF; }
-    #game-timer-box { background-color: #FFEAA7; color: #333333; }
-    #response-timer-box { background-color: #FF7675; color: white; }
-
-    #hp-container { width: 100%; background-color: rgba(0,0,0,0.2); border: 2px solid #FFFFFF; border-radius: 15px; padding: 12px; margin-bottom: 15px; box-sizing: border-box; color: white; font-size: 14px; font-weight: bold; }
-    .hp-bar-bg { width: 100%; background-color: #FFF; height: 18px; border-radius: 9px; overflow: hidden; margin-top: 5px; }
-    .hp-bar-fill { height: 100%; background-color: #1DD1A1; width: 100%; transition: width 0.3s ease; }
-
-    #chat-box { width: 100%; flex-grow: 1; overflow-y: auto; margin-bottom: 15px; padding: 15px; box-sizing: border-box; display: flex; flex-direction: column; background: rgba(255,255,255,0.9); border-radius: 20px; }
-    .message-row { display: flex; flex-direction: column; width: 100%; margin: 6px 0; }
-    .my-message { align-items: flex-end; }
-    .other-message { align-items: flex-start; }
-    .sender-name { font-size: 12px; color: #333333; font-weight: bold; margin-bottom: 2px; }
-
-    .bubble { max-width: 75%; padding: 12px 18px; border-radius: 18px; font-size: 16px; font-weight: bold; line-height: 1.4; word-wrap: break-word; }
-    .my-message .bubble { background-color: #1DD1A1; color: white; border-radius: 18px 18px 0px 18px; }
-    .other-message .bubble { background-color: #DFE4EA; color: #333333; border-radius: 18px 18px 18px 0px; }
-    
-    .chat-input-container { display: flex; width: 100%; gap: 10px; }
-    #message-input { flex-grow: 1; padding: 15px; font-size: 16px; border: 3px solid #FFFFFF; border-radius: 15px; outline: none; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-    #send-btn { padding: 15px 30px; font-size: 16px; background-color: #FFD166; color: #333333; border: 3px solid #FFFFFF; border-radius: 15px; cursor: pointer; font-weight: bold; }
-    #send-btn:disabled { background-color: #AAAAAA; cursor: not-allowed; }
-    .btn-back { padding: 8px 18px; font-size: 14px; background-color: #FF7675; border-radius: 20px; border: 2px solid #FFFFFF; color: white; font-weight: bold; cursor: pointer;}
-  </style>
-</head>
-<body>
-
-<div id="menu-screen">
-  <!-- 左上：ユーザープロフィールエリア -->
-  <div id="user-profile-area">
-    <div id="user-icon-slot" onclick="openItemBox()" title="称号アイテムを変更する">
-      <img id="custom-icon-img" src="icon.png" onerror="this.style.display='none'; document.getElementById('fallback-text').style.display='block';">
-      <span id="fallback-text" style="display:none;">NO IMAGE</span>
-    </div>
-    <div id="user-info-text">
-      <h1 id="game-title">ゆるろん</h1>
-      <div id="user-badge">プレイヤー: 読み込み中...</div>
-      <div id="icon-item-label">初心者</div>
-    </div>
-  </div>
-
-  <!-- 右側：縦並びメニューボタン群 -->
-  <div class="right-menu-container">
-    <button class="side-btn btn-settings" onclick="changeName()" title="名前を変更する">SET</button>
-    <button class="side-btn btn-ranking" onclick="sendRequest('ranking')">RANK</button>
-    <button class="side-btn btn-rule" onclick="showRule()">RULE</button>
-  </div>
-
-  <!-- 中央：巨大VSロゴ吹き出し -->
-  <div id="vs-logo-container">
-    <div class="vs-bubble">VS</div>
-  </div>
-  
-  <!-- 下部中央：テキスト通知ボックス -->
-  <div id="display-box">STATUS : READY</div>
-
-  <!-- 最下部：PLAYボタン -->
-  <div class="bottom-btn-container">
-    <button class="btn-play" onclick="sendRequest('match')">PLAY</button>
-  </div>
-</div>
-
-<div id="debate-screen">
-  <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 10px;">
-    <div id="room-title" style="font-size: 14px; font-weight: bold; color: #FFFFFF;">部屋名: 接続中...</div>
-    <button class="btn-back" onclick="goBackToMenu()">戻る</button>
-  </div>
-
-  <div id="theme-info">
-    <div id="current-theme" style="font-size: 18px;">お題: 読み込み中...</div>
-  </div>
-
-  <div id="timer-panel">
-    <div id="game-timer-box" class="time-sub-box">試合残り: 180秒</div>
-    <div id="response-timer-box" class="time-sub-box">入力停止中(安全)</div>
-  </div>
-
-  <div id="hp-container">
-    <div style="display: flex; justify-content: space-between;">
-      <div style="width: 46%;">
-        <div id="my-hp-label">あなた: 2000</div>
-        <div class="hp-bar-bg"><div id="my-hp-bar" class="hp-bar-fill"></div></div>
-      </div>
-      <div style="font-size: 16px; display: flex; align-items: center; color: #FFF385;">VS</div>
-      <div style="width: 46%; text-align: right;">
-        <div id="enemy-hp-label">相手: 2000</div>
-        <div class="hp-bar-bg"><div id="enemy-hp-bar" class="hp-bar-fill"></div></div>
-      </div>
-    </div>
-  </div>
-
-  <div id="chat-box"></div>
-  <div class="chat-input-container">
-    <input type="text" id="message-input" placeholder="自分の意見を入力...">
-    <button id="send-btn" onclick="sendMessage()">送信</button>
-  </div>
-</div>
-
-<script>
-  const SERVER_URL = 'https://dev-last-production.up.railway.app';
-  let myRoomName = '';
-  let lastMessageCount = 0; 
-  let chatIntervalId = null;
-  let timerIntervalId = null; 
-  let responseMeasureIntervalId = null; 
-  let remainingTime = 180; 
-  let isGameOverFlag = false;
-
-  let elapsedSecondsBeforeType = 0; 
-  let hasStartedTypingThisTurn = true; 
-  let lastMyHP = 2000;
-
-  let myUsername = localStorage.getItem('yururon_username') || '';
-  let myLevel = parseInt(localStorage.getItem('yururon_level')) || 1;
-  let myExp = parseInt(localStorage.getItem('yururon_exp')) || 0;
-  let currentLabel = localStorage.getItem('yururon_label') || 'ゆるろん初心者';
-
-  const itemsList = [
-    { lv: 1, label: 'ゆるろん初心者' },
-    { lv: 10, label: '口喧嘩 of ヒヨコ' },
-    { lv: 30, label: '論破 of ニワトリ' },
-    { lv: 50, label: '弁論大会 of 覇者' },
-    { lv: 80, label: '論理 of 絶対神' },
-    { lv: 100, label: '伝説 of ディベーター' }
-  ];
-
-  if (!myUsername) {
-    myUsername = prompt('ユーザーネームを入力してください！') || '名無しさん';
-    localStorage.setItem('yururon_username', myUsername);
-  }
-  
-  function updateUserDataDisplay() {
-    let lvText = myLevel >= 100 ? "MAX" : `Lv.${myLevel}`;
-    let expText = myLevel >= 100 ? "MAX" : `EXP: ${myExp}/100`;
-    document.getElementById('user-badge').innerText = `${myUsername} [${lvText} (${expText})]`;
-    document.getElementById('icon-item-label').innerText = currentLabel;
-  }
-  updateUserDataDisplay();
-
-  function changeName() {
-    let newName = prompt('新しいユーザーネームを入力してください：', myUsername);
-    if (newName && newName.trim() !== '') {
-      myUsername = newName;
-      localStorage.setItem('yururon_username', myUsername);
-      updateUserDataDisplay();
-    }
-  }
-
-  function openItemBox() {
-    let message = "称号着せ替えクローゼット\n変更したい番号を半角数字で入力してね！\n\n";
-    itemsList.forEach((item, index) => {
-      const isUnlocked = myLevel >= item.lv;
-      message += `${index + 1}: [${isUnlocked ? '解放済' : 'Lv.' + item.lv + 'で解放'}] ${item.label}\n`;
-    });
-    let choice = prompt(message);
-    let idx = parseInt(choice) - 1;
-    if (idx >= 0 && idx < itemsList.length) {
-      if (myLevel >= itemsList[idx].lv) {
-        currentLabel = itemsList[idx].label;
-        localStorage.setItem('yururon_label', currentLabel);
-        updateUserDataDisplay();
-        document.getElementById('display-box').innerText = `称号を「${currentLabel}」に変更したよ！`;
-      } else {
-        alert("その称号はレベルが足りません！");
-      }
-    }
-  }
-
-  function addExperience(amount) {
-    if (myLevel >= 100) return;
-    myExp += amount;
-    let leveledUp = false;
-    while (myExp >= 100 && myLevel < 100) {
-      myExp -= 100;
-      myLevel++;
-      leveledUp = true;
-      if (myLevel >= 100) { myExp = 0; break; }
-    }
-    localStorage.setItem('yururon_level', myLevel);
-    localStorage.setItem('yururon_exp', myExp);
-    updateUserDataDisplay();
-  }
-
-  function showRule() {
-    document.getElementById('display-box').innerHTML = `【ゆるろんの新ルール】\n\nお題決定時、または送信後に「計測」がスタート！\nキーボードを【打ち始めるまでの時間】が自動で測られます！\n1文字目を打った瞬間、迷った秒数×30のダメージが自分のHP（最大2000）に直撃！\n打ち始めた後はゆっくり考えて送信してOK！初速がすべて！`;
-  }
-
-  function sendRequest(type) {
-    const displayBox = document.getElementById('display-box');
-    if (type === 'match') { displayBox.innerHTML = 'STATUS : CONNECTING...'; }
-
-    fetch(`${SERVER_URL}/${type}`)
-            .then(response => response.text())
-            .then(data => {
-              if (type === 'ranking') {
-                displayBox.innerHTML = `ランキング\n\n${data}`;
-                return;
-              }
-
-              if (data.startsWith('MATCHING_SUCCESS')) {
-                const parts = data.split(' | ');
-                myRoomName = parts[0].split(': ')[1]; 
-                const currentTheme = parts[1]; 
-
-                document.getElementById('room-title').innerText = `対戦部屋: ${myRoomName}`;
-                document.getElementById('current-theme').innerText = `お題：${currentTheme}`;
-                
-                document.getElementById('my-hp-label').innerText = `${myUsername}: 2000`;
-                document.getElementById('enemy-hp-label').innerText = `相手: 2000`;
-                document.getElementById('my-hp-bar').style.width = '100%';
-                document.getElementById('enemy-hp-bar').style.width = '100%';
-                isGameOverFlag = false;
-                lastMyHP = 2000;
-
-                hasStartedTypingThisTurn = false; 
-                elapsedSecondsBeforeType = 0;
-
-                setTimeout(() => {
-                  document.getElementById('menu-screen').style.display = 'none';
-                  document.getElementById('debate-screen').style.display = 'flex';
-                  
-                  chatIntervalId = setInterval(updateChatLog, 1000);
-                  startTimer(); 
-                  startResponseTimer(); 
-                }, 1000);
-              }
-            });
-  }
-
-  function startTimer() {
-    remainingTime = 180; 
-    document.getElementById('game-timer-box').innerText = `試合残り: ${remainingTime}秒`;
-    document.getElementById('message-input').disabled = false;
-    document.getElementById('send-btn').disabled = false;
-
-    timerIntervalId = setInterval(() => {
-      if (isGameOverFlag) return;
-      remainingTime--;
-      if (remainingTime <= 0) {
-        endGame("タイムアップ！引き分け！", 20); 
-      } else {
-        document.getElementById('game-timer-box').innerText = `試合残り: ${remainingTime}秒`;
-      }
-    }, 1000);
-  }
-
-  function startResponseTimer() {
-    const inputField = document.getElementById('message-input');
-    const responseBox = document.getElementById('response-timer-box');
-
-    inputField.oninput = () => {
-      if (!hasStartedTypingThisTurn && inputField.value.length > 0) {
-        hasStartedTypingThisTurn = true; 
-        let penaltyDamage = elapsedSecondsBeforeType * 30; 
-        
-        if (penaltyDamage > 0) {
-          lastMyHP = Math.max(0, lastMyHP - penaltyDamage);
-          responseBox.innerText = `初速遅れで -${penaltyDamage} ダメージ！`;
-          responseBox.style.backgroundColor = "#D63031";
-
-          fetch(`${SERVER_URL}/send-message`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ roomName: myRoomName, sender: myUsername, text: "", penaltyDamage: penaltyDamage })
-          });
-        } else {
-          responseBox.innerText = `ナイス初速！ノーダメージ！`;
-          responseBox.style.backgroundColor = "#2ECC71";
-        }
-      }
+    rooms[roomName] = {
+      theme: selectedTheme,
+      players: [waitingPlayer, 'Guest_' + Math.floor(Math.random() * 1000)],
+      messages: [],
+      hp: {},
+      isGameOver: false
     };
 
-    responseMeasureIntervalId = setInterval(() => {
-      if (isGameOverFlag) return;
-
-      if (!hasStartedTypingThisTurn) {
-        elapsedSecondsBeforeType++;
-        responseBox.innerText = `警告 早く打て！迷い時間: ${elapsedSecondsBeforeType}秒`;
-        responseBox.style.backgroundColor = "#E17055";
-      }
-    }, 1000);
-  }
-
-  function sendMessage() {
-    const input = document.getElementById('message-input');
-    const text = input.value.trim();
-    if (!text || !myRoomName || remainingTime <= 0 || isGameOverFlag) return; 
-
-    hasStartedTypingThisTurn = false; 
-    elapsedSecondsBeforeType = 0;
-    document.getElementById('response-timer-box').innerText = `次の入力を早く始めろ！`;
-    document.getElementById('response-timer-box').style.backgroundColor = "#E17055";
-
-    fetch(`${SERVER_URL}/send-message`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ roomName: myRoomName, sender: myUsername, text: text })
-    });
-    input.value = '';
-  }
-
-  function updateChatLog() {
-    if (!myRoomName) return;
-    fetch(`${SERVER_URL}/get-messages?roomName=${myRoomName}`)
-            .then(response => response.json())
-            .then(data => {
-              const messages = data.messages;
-              const hpData = data.hpData;
-
-              let myHP = 2000;
-              let enemyHP = 2000;
-              let enemyName = "相手";
-
-              Object.keys(hpData).forEach(player => {
-                let currentRawHP = hpData[player];
-                let actualHP = currentRawHP <= 100 ? currentRawHP * 20 : currentRawHP;
-
-                if (player === myUsername) { 
-                  myHP = actualHP; 
-                  if (lastMyHP < myHP) { myHP = lastMyHP; } else { lastMyHP = myHP; }
-                } 
-                else { 
-                  enemyName = player; 
-                  enemyHP = actualHP; 
-                }
-              });
-
-              let myHPPercent = (myHP / 2000) * 100;
-              let enemyHPPercent = (enemyHP / 2000) * 100;
-
-              document.getElementById('my-hp-label').innerText = `${myUsername}: ${myHP}/2000`;
-              document.getElementById('enemy-hp-label').innerText = `${enemyName}: ${enemyHP}/2000`;
-              document.getElementById('my-hp-bar').style.width = `${myHPPercent}%`;
-              document.getElementById('enemy-hp-bar').style.width = `${enemyHPPercent}%`;
-
-              document.getElementById('my-hp-bar').style.backgroundColor = myHPPercent <= 30 ? '#FF477E' : '#1DD1A1';
-              document.getElementById('enemy-hp-bar').style.backgroundColor = enemyHPPercent <= 30 ? '#FF477E' : '#1DD1A1';
-
-              if (!isGameOverFlag) {
-                if (myHP <= 0 && enemyHP <= 0) { endGame("相打ち！ダブルK.O.！", 20); } 
-                else if (myHP <= 0) { endGame(`K.O.！ ${enemyName} の勝ち！`, 20); } 
-                else if (enemyHP <= 0) { endGame(`K.O.！ ${myUsername} の勝ち！`, 50); } 
-              }
-
-              if (messages.length === lastMessageCount) return;
-              const chatBox = document.getElementById('chat-box');
-              chatBox.innerHTML = ''; 
-
-              messages.forEach(msg => {
-                if (msg.text === "") return; 
-
-                const rowElement = document.createElement('div');
-                rowElement.classList.add('message-row');
-                if (msg.sender === myUsername) { rowElement.classList.add('my-message'); } 
-                else { rowElement.classList.add('other-message'); }
-
-                const nameElement = document.createElement('div');
-                nameElement.classList.add('sender-name');
-                nameElement.innerText = msg.sender;
-
-                const bubbleElement = document.createElement('div');
-                bubbleElement.classList.add('bubble');
-                bubbleElement.innerText = msg.text;
-
-                rowElement.appendChild(nameElement);
-                rowElement.appendChild(bubbleElement);
-                chatBox.appendChild(rowElement);
-              });
-              chatBox.scrollTop = chatBox.scrollHeight; 
-              lastMessageCount = messages.length; 
-            });
-  }
-
-  function endGame(resultMessage, expReward) {
-    isGameOverFlag = true;
-    clearInterval(timerIntervalId);
-    clearInterval(responseMeasureIntervalId); 
-    document.getElementById('game-timer-box').innerText = "試合終了";
-    document.getElementById('response-timer-box').innerText = "STOP";
-    document.getElementById('response-timer-box').style.backgroundColor = "#74B9FF";
-    document.getElementById('message-input').disabled = true;
-    document.getElementById('send-btn').disabled = true;
-
-    fetch(`${SERVER_URL}/game-over`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ roomName: myRoomName })
+    // 初期HP（お互い100とする ※クライアント側で倍算処理）
+    rooms[roomName].players.forEach(p => {
+      rooms[roomName].hp[p] = 100; 
     });
 
-    localStorage.setItem('yururon_pending_exp', expReward);
+    res.send(`MATCHING_SUCCESS | Room: ${roomName} | ${selectedTheme}`);
+    waitingPlayer = null;
+  } else {
+    waitingPlayer = 'Guest_' + Math.floor(Math.random() * 1000);
+    res.send('MATCHING_SUCCESS | Room: room_solo | ' + THEMES[0]);
+    
+    // ソロ用ダミールーム
+    rooms['room_solo'] = {
+      theme: THEMES[0],
+      players: [waitingPlayer, 'AI_Debater'],
+      messages: [],
+      hp: { [waitingPlayer]: 100, 'AI_Debater': 100 },
+      isGameOver: false
+    };
+    waitingPlayer = null;
+  }
+});
+
+// メッセージ送信API（自傷ダメージもここで処理）
+app.post('/send-message', (req, res) => {
+  const { roomName, sender, text, penaltyDamage } = req.body;
+  const room = rooms[roomName];
+  if (!room || room.isGameOver) {
+    return res.status(400).send('Room not found or game over');
   }
 
-  function goBackToMenu() {
-    if (chatIntervalId) { clearInterval(chatIntervalId); }
-    if (timerIntervalId) { clearInterval(timerIntervalId); } 
-    if (responseMeasureIntervalId) { clearInterval(responseMeasureIntervalId); } 
-    myRoomName = '';
-    lastMessageCount = 0;
-    document.getElementById('chat-box').innerHTML = '';
+  // 1. 初速のペナルティダメージがある場合
+  if (penaltyDamage !== undefined) {
+    const rawDamage = Math.ceil(penaltyDamage / 20); // クライアント側のダメージ(30の倍数)をサーバー用に変換
+    if (room.hp[sender] !== undefined) {
+      room.hp[sender] = Math.max(0, room.hp[sender] - rawDamage);
+    }
+    return res.json({ success: true, hp: room.hp });
+  }
 
-    document.getElementById('debate-screen').style.display = 'none';
-    document.getElementById('menu-screen').style.display = 'flex';
-    document.getElementById('display-box').innerHTML = 'STATUS : READY';
-
-    let pendingExp = localStorage.getItem('yururon_pending_exp');
-    if (pendingExp) {
-      addExperience(parseInt(pendingExp));
-      localStorage.removeItem('yururon_pending_exp');
+  // 2. 通常メッセージの送信処理
+  if (text && text.trim() !== "") {
+    room.messages.push({ sender, text });
+    
+    // 通常送信時は相手に微小なランダムダメージ（5〜15）を与える
+    const opponent = room.players.find(p => p !== sender);
+    if (opponent && room.hp[opponent] !== undefined) {
+      const damage = Math.floor(Math.random() * 11) + 5; 
+      room.hp[opponent] = Math.max(0, room.hp[opponent] - damage);
     }
   }
-</script>
 
-</body>
-</html>
+  res.json({ success: true, hp: room.hp, messages: room.messages });
+});
+
+// メッセージ＆HP取得API
+app.get('/get-messages', (req, res) => {
+  const { roomName } = req.query;
+  const room = rooms[roomName];
+  if (!room) {
+    return res.json({ messages: [], hpData: {} });
+  }
+  res.json({ messages: room.messages, hpData: room.hp });
+});
+
+// ゲームオーバーAPI
+app.post('/game-over', (req, res) => {
+  const { roomName } = req.body;
+  if (rooms[roomName]) {
+    rooms[roomName].isGameOver = true;
+  }
+  res.send('Game Over Recorded');
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
