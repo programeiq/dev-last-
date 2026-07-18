@@ -249,7 +249,7 @@ app.get('/ranking', (req, res) => {
 app.get('/match', (req, res) => {
     const username = req.query.username || '名無しさん';
 
-    // すでに自分が待ち状態なのに、連打などでまたリクエストが来たら古いのは無視
+    // すでに自分が待ち状態なのに、連打などでまたリクエストが来たら古い接続を上書き
     if (waitingPlayer === username) {
         waitingRes = res;
         return;
@@ -258,6 +258,9 @@ app.get('/match', (req, res) => {
     if (waitingPlayer && waitingPlayer !== username) {
         // ★2人目が来た！マッチング成立！
         const roomName = 'room_' + Math.random().toString(36).substring(2, 9);
+        
+        // 【★ここでお題をランダムに選択！】
+        // 配列（THEMES）の中からランダムに1つをピックアップします
         const selectedTheme = THEMES[Math.floor(Math.random() * THEMES.length)];
 
         rooms[roomName] = {
@@ -268,21 +271,18 @@ app.get('/match', (req, res) => {
             isGameOver: false
         };
 
-        // 1人目（待っていた人）に成功を返す
+        // 1人目（待っていた画面）に成功を返す
         waitingRes.send(`MATCHING_SUCCESS | Room: ${roomName} | ${selectedTheme}`);
-        // 2人目（今来た人）に成功を返す
+        // 2人目（今ボタンを押した画面）に成功を返す
         res.send(`MATCHING_SUCCESS | Room: ${roomName} | ${selectedTheme}`);
 
-        // 待ち状態をクリア
+        // 待ち状態をきれいにクリア
         waitingPlayer = null;
         waitingRes = null;
     } else {
-        // ★誰もいないので、1人目として静かに待つ（AI部屋へは行かない！）
+        // ★誰もいないので、AI部屋に飛ばさず「1人目の待ち人」として静かに待機！
         waitingPlayer = username;
-        waitingRes = res; // レンスポンスを返さずにキープして接続を待たせる
-        
-        // 注意：あまりに放置されるとタイムアウトするので、画面側から定期的に
-        // 再送してもらうか、サーバー側で一定時間後に「まだだよ」と返す処理を入れると親切です
+        waitingRes = res; // レスポンスを返さずにキープして接続を維持します
     }
 });
 
