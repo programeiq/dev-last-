@@ -397,8 +397,9 @@
           clearInterval(matchPollIntervalId); // マッチングが成功したらループを止める
           
           const parts = data.split(' | ');
-          myRoomName = parts[0].split(': ')[1]; 
-          const currentTheme = parts[1]; 
+          // 【★修正完了★】部屋名とお題を正しく切り分けるように直しました！
+          myRoomName = parts[1].split(': ')[1]; 
+          const currentTheme = parts[2]; 
 
           document.getElementById('room-title').innerText = `対戦部屋: ${myRoomName}`;
           document.getElementById('current-theme').innerText = `お題：${currentTheme}`;
@@ -424,7 +425,7 @@
       })
       .catch(err => {
         console.error("通信エラー:", err);
-        document.getElementById('display-box').innerText = "サーバーと通信できません。ローカルサーバーを確認してください。";
+        document.getElementById('display-box').innerText = "サーバーと通信できません。";
       });
   }
 
