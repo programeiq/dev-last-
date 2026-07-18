@@ -247,39 +247,43 @@ app.get('/ranking', (req, res) => {
 
 // マッチングAPI
 app.get('/match', (req, res) => {
-  if (waitingPlayer) {
-    const roomName = `room_${Date.now()}`;
-    const selectedTheme = THEMES[Math.floor(Math.random() * THEMES.length)];
-    
-    rooms[roomName] = {
-      theme: selectedTheme,
-      players: [waitingPlayer, 'Guest_' + Math.floor(Math.random() * 1000)],
-      messages: [],
-      hp: {},
-      isGameOver: false
-    };
+    const username = req.query.username || '名無しさん';
 
-    // 初期HP（お互い100とする ※クライアント側で倍算処理）
-    rooms[roomName].players.forEach(p => {
-      rooms[roomName].hp[p] = 100; 
-    });
+    // すでに自分が待ち状態なのに、連打などでまたリクエストが来たら古いのは無視
+    if (waitingPlayer === username) {
+        waitingRes = res;
+        return;
+    }
 
-    res.send(`MATCHING_SUCCESS | Room: ${roomName} | ${selectedTheme}`);
-    waitingPlayer = null;
-  } else {
-    waitingPlayer = 'Guest_' + Math.floor(Math.random() * 1000);
-    res.send('MATCHING_SUCCESS | Room: room_solo | ' + THEMES[0]);
-    
-    // ソロ用ダミールーム
-    rooms['room_solo'] = {
-      theme: THEMES[0],
-      players: [waitingPlayer, 'AI_Debater'],
-      messages: [],
-      hp: { [waitingPlayer]: 100, 'AI_Debater': 100 },
-      isGameOver: false
-    };
-    waitingPlayer = null;
-  }
+    if (waitingPlayer && waitingPlayer !== username) {
+        // ★2人目が来た！マッチング成立！
+        const roomName = 'room_' + Math.random().toString(36).substring(2, 9);
+        const selectedTheme = THEMES[Math.floor(Math.random() * THEMES.length)];
+
+        rooms[roomName] = {
+            theme: selectedTheme,
+            players: [waitingPlayer, username],
+            messages: [],
+            hp: { [waitingPlayer]: 100, [username]: 100 },
+            isGameOver: false
+        };
+
+        // 1人目（待っていた人）に成功を返す
+        waitingRes.send(`MATCHING_SUCCESS | Room: ${roomName} | ${selectedTheme}`);
+        // 2人目（今来た人）に成功を返す
+        res.send(`MATCHING_SUCCESS | Room: ${roomName} | ${selectedTheme}`);
+
+        // 待ち状態をクリア
+        waitingPlayer = null;
+        waitingRes = null;
+    } else {
+        // ★誰もいないので、1人目として静かに待つ（AI部屋へは行かない！）
+        waitingPlayer = username;
+        waitingRes = res; // レンスポンスを返さずにキープして接続を待たせる
+        
+        // 注意：あまりに放置されるとタイムアウトするので、画面側から定期的に
+        // 再送してもらうか、サーバー側で一定時間後に「まだだよ」と返す処理を入れると親切です
+    }
 });
 
 // メッセージ送信API
