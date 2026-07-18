@@ -632,10 +632,12 @@
     const inputField = document.getElementById('message-input');
     const responseBox = document.getElementById('response-timer-box');
 
-    // ★入力欄に何か打ち込んだ瞬間の処理
+    // ★入力欄に「1文字でも」打ち込んだ瞬間の処理（連打を防ぐ仕組みに修正）
     inputField.oninput = () => {
+      // まだ「未入力状態（false）」のとき、かつ、文字が入った時だけ1回だけ処理！
       if (!hasStartedTypingThisTurn && inputField.value.length > 0) {
-        hasStartedTypingThisTurn = true; // 打ち始めたので安全モードへ！
+        hasStartedTypingThisTurn = true; // 即座に安全モード（true）にしてガードをかける！
+        
         let penaltyDamage = elapsedSecondsBeforeType * 30; 
         
         if (penaltyDamage > 0) {
@@ -646,7 +648,7 @@
           let lvText = myLevel >= 100 ? "MAX" : `Lv.${myLevel}`;
           let fullProfileName = `${myUsername} [${lvText} (${currentLabel})]`;
 
-          // 遅れペナルティをサーバーに送信
+          // 初速ペナルティ分だけを1回だけサーバーに送信
           fetch(`${SERVER_URL}/send-message`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -659,26 +661,25 @@
       }
     };
 
-    // ★1秒ごとに監視するループ
+    // ★1秒ごとに監視するループ（HPが1ずつ減る処理はここだけに集約！）
     responseMeasureIntervalId = setInterval(() => {
       if (isGameOverFlag) return;
       
-      // まだ打ち始めていない場合のみ、ペナルティ加算＋HP1減少！
+      // まだ打ち始めていない間だけ、きっちり1秒ごとに1ずつ減らす
       if (!hasStartedTypingThisTurn) {
         elapsedSecondsBeforeType++;
         
-        // 🆕 打ち始めるまで、自分のHPを1ずつリアルタイムに減らす
         lastMyHP = Math.max(0, lastMyHP - 1);
         
         responseBox.innerText = `警告 早く打て！迷い時間: ${elapsedSecondsBeforeType}秒 (-1HP/秒)`;
         responseBox.style.backgroundColor = "#E17055";
 
-        // 減少したHPを画面に即反映
+        // 画面のHPバーにリアルタイム反映
         let myHPPercent = (lastMyHP / 2000) * 100;
         document.getElementById('my-hp-label').innerText = `${myUsername}: ${lastMyHP}/2000`;
         document.getElementById('my-hp-bar').style.width = `${myHPPercent}%`;
 
-        // サーバーにも「1ダメージ受けた」ことを同期する
+        // 1秒ごとの減少（1ダメージ）をサーバーに安全に同期
         let lvText = myLevel >= 100 ? "MAX" : `Lv.${myLevel}`;
         let fullProfileName = `${myUsername} [${lvText} (${currentLabel})]`;
         fetch(`${SERVER_URL}/send-message`, {
@@ -687,7 +688,6 @@
           body: JSON.stringify({ roomName: myRoomName, sender: fullProfileName, text: "", penaltyDamage: 1 })
         });
 
-        // 毎秒減少でHPが0になったら即ゲームオーバー
         if (lastMyHP <= 0) {
           endGame(`敗北しました...（HPが尽き果てた）`, 20);
         }
@@ -700,7 +700,7 @@
     const text = input.value.trim();
     if (!text || !myRoomName || remainingTime <= 0 || isGameOverFlag) return; 
 
-    // 送信したら次のターンの計測開始（未入力状態に戻るため、また毎秒減少が始まる）
+    // 送信したらリセット（次の文字入力まで再び1秒ごとに減少がスタート）
     hasStartedTypingThisTurn = false; 
     elapsedSecondsBeforeType = 0;
     document.getElementById('response-timer-box').innerText = `次の入力を早く始めろ！`;
@@ -736,7 +736,6 @@
 
           if (player === myUsername || player.startsWith(myUsername + " [") || player.trim().startsWith(cleanMyName)) { 
             myHP = actualHP; 
-            // 自分のローカルHP（毎秒減少を含む）とサーバーの同期
             if (lastMyHP < myHP) { myHP = lastMyHP; } else { lastMyHP = myHP; }
           } else { 
             enemyFullNameDisplay = player; 
