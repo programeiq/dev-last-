@@ -47,7 +47,7 @@
       color: #FFFFFF;
     }
 
-    /* 丸型のクローゼット兼アイコンスロット */
+    /* 【★アップデート】丸型のアイコン枠。クリックで画像アップロード */
     #user-icon-slot {
       width: 60px;
       height: 60px;
@@ -59,12 +59,18 @@
       justify-content: center;
       overflow: hidden;
       transition: transform 0.1s;
-      border: 2px solid #00A2FF;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      border: 2px solid #FFFFFF;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      position: relative;
     }
     #user-icon-slot:hover { transform: scale(1.05); }
-    #custom-icon-img { width: 100%; height: 100%; object-fit: cover; }
-    #fallback-text { font-size: 10px; font-weight: bold; color: #00A2FF; text-align: center; }
+    #custom-icon-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    
+    /* 画像がないときのダミーテキスト */
+    #fallback-text { font-size: 11px; font-weight: bold; color: #00A2FF; text-align: center; line-height: 1.2; }
+
+    /* 非表示のファイル入力（裏で動かす用） */
+    #icon-file-input { display: none; }
 
     #user-info-text {
       display: flex;
@@ -72,7 +78,7 @@
     }
     #game-title { font-size: 22px; font-weight: bold; margin: 0; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
     #user-badge { font-size: 13px; font-weight: bold; opacity: 0.9; }
-    #icon-item-label { font-size: 11px; background: #FFFFFF; color: #00A2FF; padding: 2px 8px; border-radius: 10px; font-weight: bold; margin-top: 4px; width: fit-content; }
+    #icon-item-label { font-size: 11px; background: #FFFFFF; color: #00A2FF; padding: 2px 8px; border-radius: 10px; font-weight: bold; margin-top: 4px; width: fit-content; cursor: pointer; }
 
     /* 右側の縦並びメニューボタン群 */
     .right-menu-container {
@@ -107,7 +113,7 @@
     .btn-ranking { background-color: #FFF385; color: #333333; border-color: #333333; }
     .btn-rule { background-color: #A29BFE; color: white; }
 
-    /* 中央の巨大な「VS」吹き出しロゴ */
+    /* 中央の巨大な「VS」ロゴ */
     #vs-logo-container {
       flex: 1;
       display: flex;
@@ -220,14 +226,18 @@
 <div id="menu-screen">
   <!-- 左上：ユーザープロフィールエリア -->
   <div id="user-profile-area">
-    <div id="user-icon-slot" onclick="openItemBox()" title="称号アイテムを変更する">
-      <img id="custom-icon-img" src="icon.png" onerror="this.style.display='none'; document.getElementById('fallback-text').style.display='block';">
-      <span id="fallback-text" style="display:none;">NO IMAGE</span>
+    <!-- 【★アップデート】クリックするとPCやスマホ内の画像ファイルを選択できます -->
+    <div id="user-icon-slot" onclick="triggerImageUpload()" title="クリックして写真をアップロード！">
+      <img id="custom-icon-img" style="display:none;">
+      <span id="fallback-text">写真<br>UP</span>
     </div>
+    <!-- 隠しファイル入力フォーム -->
+    <input type="file" id="icon-file-input" accept="image/*" onchange="handleImageUpload(event)">
+
     <div id="user-info-text">
       <h1 id="game-title">ゆるろん</h1>
       <div id="user-badge">プレイヤー: 読み込み中...</div>
-      <div id="icon-item-label">初心者</div>
+      <div id="icon-item-label" onclick="openItemBox()" title="称号アイテムを変更する">初心者</div>
     </div>
   </div>
 
@@ -323,11 +333,58 @@
     localStorage.setItem('yururon_username', myUsername);
   }
   
+  // 【★新機能】ファイル選択画面をキックする
+  function triggerImageUpload() {
+    document.getElementById('icon-file-input').click();
+  }
+
+  // 【★新機能】選択された写真を読み込んでLocalStorageに保存する
+  function handleImageUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // 画像がデカすぎるとエラーになるので2MB制限
+    if (file.size > 2 * 1024 * 1024) {
+      alert("画像サイズが大きすぎます！2MB以下の写真を選んでね。");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const base64Image = e.target.result;
+      try {
+        localStorage.setItem('yururon_user_icon', base64Image);
+        loadUserIcon(); // 画面に即反映
+        document.getElementById('display-box').innerText = "お気に入りの写真をアイコンに設定したよ！📸";
+      } catch (error) {
+        alert("画像のデータが大きすぎて保存できませんでした。別の画像か、少し小さめの写真で試してね！");
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // 【★新機能】保存されているアイコン画像を読み込んで表示する
+  function loadUserIcon() {
+    const savedIcon = localStorage.getItem('yururon_user_icon');
+    const imgTag = document.getElementById('custom-icon-img');
+    const fallbackText = document.getElementById('fallback-text');
+
+    if (savedIcon) {
+      imgTag.src = savedIcon;
+      imgTag.style.display = 'block';
+      fallbackText.style.display = 'none';
+    } else {
+      imgTag.style.display = 'none';
+      fallbackText.style.display = 'block';
+    }
+  }
+
   function updateUserDataDisplay() {
     let lvText = myLevel >= 100 ? "MAX" : `Lv.${myLevel}`;
     let expText = myLevel >= 100 ? "MAX" : `EXP: ${myExp}/100`;
     document.getElementById('user-badge').innerText = `${myUsername} [${lvText} (${expText})]`;
     document.getElementById('icon-item-label').innerText = currentLabel;
+    loadUserIcon(); // アイコンのロードもここで行う
   }
   updateUserDataDisplay();
 
@@ -379,7 +436,7 @@
 
   function startMatching() {
     const displayBox = document.getElementById('display-box');
-    displayBox.innerHTML = 'STATUS : リアルな対戦相手を探しています（AI乱入OFF）...';
+    displayBox.innerHTML = 'STATUS : 人間の対戦相手を探しています...';
 
     pollMatch();
     matchPollIntervalId = setInterval(pollMatch, 1500);
@@ -389,9 +446,7 @@
     let lvText = myLevel >= 100 ? "MAX" : `Lv.${myLevel}`;
     let fullProfileName = `${myUsername} [${lvText} (${currentLabel})]`;
 
-    // 【★AIシャットアウト対応】URLの末尾に「&no_ai=true」を強制付与！
-    // これにより、どれだけ待ってもサーバー側からAIボットが送り込まれなくなります！
-    fetch(`${SERVER_URL}/match?username=${encodeURIComponent(fullProfileName)}&no_ai=true`)
+    fetch(`${SERVER_URL}/match?username=${encodeURIComponent(fullProfileName)}`)
       .then(response => response.text())
       .then(data => {
         if (data.startsWith('MATCHING_SUCCESS')) {
