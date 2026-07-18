@@ -275,7 +275,8 @@
       </div>
       <div style="font-size: 16px; display: flex; align-items: center; color: #FFF385;">VS</div>
       <div style="width: 46%; text-align: right;">
-        <div id="enemy-hp-label">相手: 2000</div>
+        <!-- 【★対応完了】相手の「名前」枠を読み込み中に変更して準備完了！ -->
+        <div id="enemy-hp-label">相手: 読み込み中...</div>
         <div class="hp-bar-bg"><div id="enemy-hp-bar" class="hp-bar-fill"></div></div>
       </div>
     </div>
@@ -289,7 +290,6 @@
 </div>
 
 <script>
-  // ★ここに「Railway」にデプロイされたあなたの本番サーバーURLを完璧に紐づけました！
   const SERVER_URL = 'https://dev-last-production.up.railway.app';
   
   let myRoomName = '';
@@ -297,7 +297,7 @@
   let chatIntervalId = null;
   let timerIntervalId = null; 
   let responseMeasureIntervalId = null; 
-  let matchPollIntervalId = null; // マッチング待機用の定期通信タイマー
+  let matchPollIntervalId = null; 
   let remainingTime = 180; 
   let isGameOverFlag = false;
 
@@ -378,26 +378,26 @@
     document.getElementById('display-box').innerHTML = `【ゆるろんの新ルール】\n\nお題決定時、または送信後に「計測」がスタート！\nキーボードを【打ち始めるまでの時間】が自動で測られます！\n1文字目を打った瞬間、迷った秒数×30のダメージが自分のHP（最大2000）に直撃！\n打ち始めた後はゆっくり考えて送信してOK！初速がすべて！`;
   }
 
-  // オンラインマッチング開始（誰かが来るまで定期的にチェックする安全仕様）
   function startMatching() {
     const displayBox = document.getElementById('display-box');
     displayBox.innerHTML = 'STATUS : マッチング相手を探しています...';
 
-    // 最初に1回リクエストを投げ、マッチしなければ1.5秒ごとに再確認
     pollMatch();
     matchPollIntervalId = setInterval(pollMatch, 1500);
   }
 
   function pollMatch() {
-    // 自分のユーザー名をパラメータにのせてマッチング申請
-    fetch(`${SERVER_URL}/match?username=${encodeURIComponent(myUsername)}`)
+    // 自分の最新の「名前[Lv.xx (称号)]」のフルネームを送信してマッチング
+    let lvText = myLevel >= 100 ? "MAX" : `Lv.${myLevel}`;
+    let fullProfileName = `${myUsername} [${lvText} (${currentLabel})]`;
+
+    fetch(`${SERVER_URL}/match?username=${encodeURIComponent(fullProfileName)}`)
       .then(response => response.text())
       .then(data => {
         if (data.startsWith('MATCHING_SUCCESS')) {
-          clearInterval(matchPollIntervalId); // マッチングが成功したらループを止める
+          clearInterval(matchPollIntervalId); 
           
           const parts = data.split(' | ');
-          // 【★修正完了★】部屋名とお題を正しく切り分けるように直しました！
           myRoomName = parts[1].split(': ')[1]; 
           const currentTheme = parts[2]; 
 
@@ -405,7 +405,6 @@
           document.getElementById('current-theme').innerText = `お題：${currentTheme}`;
           
           document.getElementById('my-hp-label').innerText = `${myUsername}: 2000`;
-          document.getElementById('enemy-hp-label').innerText = `相手: 2000`;
           document.getElementById('my-hp-bar').style.width = '100%';
           document.getElementById('enemy-hp-bar').style.width = '100%';
           isGameOverFlag = false;
@@ -414,7 +413,6 @@
           hasStartedTypingThisTurn = false; 
           elapsedSecondsBeforeType = 0;
 
-          // バトル画面への遷移
           document.getElementById('menu-screen').style.display = 'none';
           document.getElementById('debate-screen').style.display = 'flex';
           
@@ -460,10 +458,13 @@
           responseBox.innerText = `初速遅れで -${penaltyDamage} ダメージ！`;
           responseBox.style.backgroundColor = "#D63031";
 
+          let lvText = myLevel >= 100 ? "MAX" : `Lv.${myLevel}`;
+          let fullProfileName = `${myUsername} [${lvText} (${currentLabel})]`;
+
           fetch(`${SERVER_URL}/send-message`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ roomName: myRoomName, sender: myUsername, text: "", penaltyDamage: penaltyDamage })
+            body: JSON.stringify({ roomName: myRoomName, sender: fullProfileName, text: "", penaltyDamage: penaltyDamage })
           });
         } else {
           responseBox.innerText = `ナイス初速！ノーダメージ！`;
@@ -493,10 +494,13 @@
     document.getElementById('response-timer-box').innerText = `次の入力を早く始めろ！`;
     document.getElementById('response-timer-box').style.backgroundColor = "#E17055";
 
+    let lvText = myLevel >= 100 ? "MAX" : `Lv.${myLevel}`;
+    let fullProfileName = `${myUsername} [${lvText} (${currentLabel})]`;
+
     fetch(`${SERVER_URL}/send-message`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ roomName: myRoomName, sender: myUsername, text: text })
+      body: JSON.stringify({ roomName: myRoomName, sender: fullProfileName, text: text })
     });
     input.value = '';
   }
@@ -511,18 +515,22 @@
 
         let myHP = 2000;
         let enemyHP = 2000;
-        let enemyName = "相手";
+        let enemyFullNameDisplay = "相手";
+
+        let lvText = myLevel >= 100 ? "MAX" : `Lv.${myLevel}`;
+        let myFullProfileName = `${myUsername} [${lvText} (${currentLabel})]`;
 
         Object.keys(hpData).forEach(player => {
           let currentRawHP = hpData[player];
           let actualHP = currentRawHP <= 100 ? currentRawHP * 20 : currentRawHP;
 
-          if (player === myUsername) { 
+          if (player === myFullProfileName || player.startsWith(myUsername + " [")) { 
             myHP = actualHP; 
             if (lastMyHP < myHP) { myHP = lastMyHP; } else { lastMyHP = myHP; }
           } 
           else { 
-            enemyName = player; 
+            // 【★対応完了】サーバーから届いた相手のレベルと称号入りの名前をそのまま格納
+            enemyFullNameDisplay = player; 
             enemyHP = actualHP; 
           }
         });
@@ -531,7 +539,9 @@
         let enemyHPPercent = (enemyHP / 2000) * 100;
 
         document.getElementById('my-hp-label').innerText = `${myUsername}: ${myHP}/2000`;
-        document.getElementById('enemy-hp-label').innerText = `${enemyName}: ${enemyHP}/2000`;
+        // 【★対応完了】相手のラベル部分に、レベルと称号付きのフルネームをバシッと表示！
+        document.getElementById('enemy-hp-label').innerText = `${enemyFullNameDisplay}: ${enemyHP}/2000`;
+        
         document.getElementById('my-hp-bar').style.width = `${myHPPercent}%`;
         document.getElementById('enemy-hp-bar').style.width = `${enemyHPPercent}%`;
 
@@ -540,8 +550,8 @@
 
         if (!isGameOverFlag) {
           if (myHP <= 0 && enemyHP <= 0) { endGame("相打ち！ダブルK.O.！", 20); } 
-          else if (myHP <= 0) { endGame(`K.O.！ ${enemyName} の勝ち！`, 20); } 
-          else if (enemyHP <= 0) { endGame(`K.O.！ ${myUsername} の勝ち！`, 50); } 
+          else if (myHP <= 0) { endGame(`K.O.！ 敗北しました...`, 20); } 
+          else if (enemyHP <= 0) { endGame(`K.O.！ あなたの勝ち！`, 50); } 
         }
 
         if (messages.length === lastMessageCount) return;
@@ -553,8 +563,13 @@
 
           const rowElement = document.createElement('div');
           rowElement.classList.add('message-row');
-          if (msg.sender === myUsername) { rowElement.classList.add('my-message'); } 
-          else { rowElement.classList.add('other-message'); }
+          
+          // チャット欄の吹き出しの左右判定
+          if (msg.sender === myFullProfileName || msg.sender.startsWith(myUsername + " [")) { 
+            rowElement.classList.add('my-message'); 
+          } else { 
+            rowElement.classList.add('other-message'); 
+          }
 
           const nameElement = document.createElement('div');
           nameElement.classList.add('sender-name');
@@ -613,7 +628,6 @@
     }
   }
 
-  // ランキングなどの各種汎用リクエスト用
   function sendRequest(type) {
     const displayBox = document.getElementById('display-box');
     fetch(`${SERVER_URL}/${type}`)
