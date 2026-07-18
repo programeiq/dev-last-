@@ -167,7 +167,7 @@
     .btn-play:hover { background-color: #F0F8FF; transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
 
 
-    /* --- VSマッチング成立画面（グレーベース） --- */
+    /* --- VSマッチング演出画面（グレーベース） --- */
     #vs-match-screen {
       display: none;
       flex-direction: column;
@@ -413,6 +413,7 @@
   let elapsedSecondsBeforeType = 0; 
   let hasStartedTypingThisTurn = true; 
   let lastMyHP = 2000;
+  let lastEnemyHP = 2000; // タイムアップ時の判定用に相手の最新HPを記憶
 
   let myUsername = localStorage.getItem('yururon_username') || '';
   let myLevel = parseInt(localStorage.getItem('yururon_level')) || 1;
@@ -525,7 +526,7 @@
   }
 
   function showRule() {
-    document.getElementById('display-box').innerHTML = `初速がすべて！迷った秒数×30ダメージ！さらに打ち始めるまで毎秒1ずつHP減少！`;
+    document.getElementById('display-box').innerHTML = `1秒ごとにHPが1ずつ減少！3分経った時点でHPが【少ないほうが負け】！終わったら【強制退出】！`;
   }
 
   function startMatching() {
@@ -599,6 +600,7 @@
         document.getElementById('enemy-hp-bar').style.width = '100%';
         isGameOverFlag = false;
         lastMyHP = 2000;
+        lastEnemyHP = 2000;
         hasStartedTypingThisTurn = false; 
         elapsedSecondsBeforeType = 0;
 
@@ -621,7 +623,14 @@
       if (isGameOverFlag) return;
       remainingTime--;
       if (remainingTime <= 0) {
-        endGame("タイムアップ！引き分け！", 20); 
+        // ⚖️ タイムアップ！HPが少ないほうが負けルール発動！
+        if (lastMyHP > lastEnemyHP) {
+          endGame(`タイムアップ！判定勝ち！（あなた:${lastMyHP} VS 相手:${lastEnemyHP}）`, 50);
+        } else if (lastMyHP < lastEnemyHP) {
+          endGame(`タイムアップ！判定負け...（あなた:${lastMyHP} VS 相手:${lastEnemyHP}）`, 20);
+        } else {
+          endGame(`タイムアップ！引き分け！（同点:${lastMyHP}）`, 20);
+        }
       } else {
         document.getElementById('game-timer-box').innerText = `試合残り: ${remainingTime}秒`;
       }
@@ -632,23 +641,20 @@
     const inputField = document.getElementById('message-input');
     const responseBox = document.getElementById('response-timer-box');
 
-    // ★入力欄に「1文字でも」打ち込んだ瞬間の処理（連打を防ぐ仕組みに修正）
     inputField.oninput = () => {
-      // まだ「未入力状態（false）」のとき、かつ、文字が入った時だけ1回だけ処理！
       if (!hasStartedTypingThisTurn && inputField.value.length > 0) {
-        hasStartedTypingThisTurn = true; // 即座に安全モード（true）にしてガードをかける！
+        hasStartedTypingThisTurn = true; 
         
-        let penaltyDamage = elapsedSecondsBeforeType * 30; 
+        let penaltyDamage = elapsedSecondsBeforeType * 2; 
         
         if (penaltyDamage > 0) {
           lastMyHP = Math.max(0, lastMyHP - penaltyDamage);
           responseBox.innerText = `初速遅れで -${penaltyDamage} ダメージ！(安全モード)`;
-          responseBox.style.backgroundColor = "#D63031";
+          responseBox.style.backgroundColor = "#2ECC71";
 
           let lvText = myLevel >= 100 ? "MAX" : `Lv.${myLevel}`;
           let fullProfileName = `${myUsername} [${lvText} (${currentLabel})]`;
 
-          // 初速ペナルティ分だけを1回だけサーバーに送信
           fetch(`${SERVER_URL}/send-message`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -661,25 +667,20 @@
       }
     };
 
-    // ★1秒ごとに監視するループ（HPが1ずつ減る処理はここだけに集約！）
     responseMeasureIntervalId = setInterval(() => {
       if (isGameOverFlag) return;
       
-      // まだ打ち始めていない間だけ、きっちり1秒ごとに1ずつ減らす
       if (!hasStartedTypingThisTurn) {
         elapsedSecondsBeforeType++;
-        
         lastMyHP = Math.max(0, lastMyHP - 1);
         
-        responseBox.innerText = `警告 早く打て！迷い時間: ${elapsedSecondsBeforeType}秒 (-1HP/秒)`;
+        responseBox.innerText = `入力待機中... 経過: ${elapsedSecondsBeforeType}秒 (-1HP/秒)`;
         responseBox.style.backgroundColor = "#E17055";
 
-        // 画面のHPバーにリアルタイム反映
         let myHPPercent = (lastMyHP / 2000) * 100;
         document.getElementById('my-hp-label').innerText = `${myUsername}: ${lastMyHP}/2000`;
         document.getElementById('my-hp-bar').style.width = `${myHPPercent}%`;
 
-        // 1秒ごとの減少（1ダメージ）をサーバーに安全に同期
         let lvText = myLevel >= 100 ? "MAX" : `Lv.${myLevel}`;
         let fullProfileName = `${myUsername} [${lvText} (${currentLabel})]`;
         fetch(`${SERVER_URL}/send-message`, {
@@ -700,7 +701,6 @@
     const text = input.value.trim();
     if (!text || !myRoomName || remainingTime <= 0 || isGameOverFlag) return; 
 
-    // 送信したらリセット（次の文字入力まで再び1秒ごとに減少がスタート）
     hasStartedTypingThisTurn = false; 
     elapsedSecondsBeforeType = 0;
     document.getElementById('response-timer-box').innerText = `次の入力を早く始めろ！`;
@@ -740,6 +740,7 @@
           } else { 
             enemyFullNameDisplay = player; 
             enemyHP = actualHP; 
+            lastEnemyHP = enemyHP; // 相手のHPをグローバル変数に退避
           }
         });
 
@@ -804,7 +805,10 @@
     });
 
     localStorage.setItem('yururon_pending_exp', expReward);
+    
+    // 📢 結果を通知して、OKを押したら【即座にロビーへ強制退出】！
     alert(resultMessage);
+    goBackToMenu();
   }
 
   function goBackToMenu() {
