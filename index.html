@@ -273,7 +273,7 @@
     #timer-panel { width: 100%; display: flex; justify-content: space-between; margin-bottom: 10px; gap: 10px; }
     .time-sub-box { flex: 1; text-align: center; font-size: 14px; font-weight: bold; padding: 8px; border-radius: 10px; border: 2px solid #FFFFFF; }
     #game-timer-box { background-color: #FFEAA7; color: #333333; }
-    #response-timer-box { background-color: #FF7675; color: white; }
+    #response-timer-box { background-color: #1DD1A1; color: white; }
 
     #hp-container { width: 100%; background-color: rgba(0,0,0,0.2); border: 2px solid #FFFFFF; border-radius: 15px; padding: 12px; margin-bottom: 15px; box-sizing: border-box; color: white; font-size: 14px; font-weight: bold; }
     .hp-bar-bg { width: 100%; background-color: #FFF; height: 18px; border-radius: 9px; overflow: hidden; margin-top: 5px; }
@@ -373,7 +373,7 @@
 
   <div id="timer-panel">
     <div id="game-timer-box" class="time-sub-box">試合残り: 180秒</div>
-    <div id="response-timer-box" class="time-sub-box">入力停止中(安全)</div>
+    <div id="response-timer-box" class="time-sub-box">バトル中！</div>
   </div>
 
   <div id="hp-container">
@@ -404,16 +404,13 @@
   let lastMessageCount = 0; 
   let chatIntervalId = null;
   let timerIntervalId = null; 
-  let responseMeasureIntervalId = null; 
   let matchPollIntervalId = null; 
   let remainingTime = 180; 
   let isGameOverFlag = false;
   let hasTriggeredCountdown = false;
 
-  let elapsedSecondsBeforeType = 0; 
-  let hasStartedTypingThisTurn = true; 
   let lastMyHP = 2000;
-  let lastEnemyHP = 2000; // タイムアップ時の判定用に相手の最新HPを記憶
+  let lastEnemyHP = 2000; 
 
   let myUsername = localStorage.getItem('yururon_username') || '';
   let myLevel = parseInt(localStorage.getItem('yururon_level')) || 1;
@@ -526,7 +523,7 @@
   }
 
   function showRule() {
-    document.getElementById('display-box').innerHTML = `1秒ごとにHPが1ずつ減少！3分経った時点でHPが【少ないほうが負け】！終わったら【強制退出】！`;
+    document.getElementById('display-box').innerHTML = `1秒ごとにHPが1ずつ自然減少！3分経った時点でHPが【少ないほうが負け】！終わったら【強制退出】！`;
   }
 
   function startMatching() {
@@ -601,12 +598,9 @@
         isGameOverFlag = false;
         lastMyHP = 2000;
         lastEnemyHP = 2000;
-        hasStartedTypingThisTurn = false; 
-        elapsedSecondsBeforeType = 0;
 
         chatIntervalId = setInterval(updateChatLog, 1000);
         startTimer(); 
-        startResponseTimer();
       } else {
         document.getElementById('match-countdown-banner').innerText = `試合開始まで あと ${countdownValue} 秒...`;
       }
@@ -616,14 +610,41 @@
   function startTimer() {
     remainingTime = 180; 
     document.getElementById('game-timer-box').innerText = `試合残り: ${remainingTime}秒`;
+    document.getElementById('response-timer-box').innerText = `毎秒 -1 HP`;
+    document.getElementById('response-timer-box').style.backgroundColor = "#1DD1A1";
     document.getElementById('message-input').disabled = false;
     document.getElementById('send-btn').disabled = false;
 
+    // ★初速遅れ機能(oninput)は完全に削除されました
+
     timerIntervalId = setInterval(() => {
       if (isGameOverFlag) return;
+      
       remainingTime--;
+
+      // 🛡️ 重複暴走を防ぐため、このメインタイマーの秒動機のみで確実に自分のHPを1減らす
+      lastMyHP = Math.max(0, lastMyHP - 1);
+      
+      let myHPPercent = (lastMyHP / 2000) * 100;
+      document.getElementById('my-hp-label').innerText = `${myUsername}: ${lastMyHP}/2000`;
+      document.getElementById('my-hp-bar').style.width = `${myHPPercent}%`;
+
+      // サーバーへ「毎秒1減少」のみを綺麗に同期
+      let lvText = myLevel >= 100 ? "MAX" : `Lv.${myLevel}`;
+      let fullProfileName = `${myUsername} [${lvText} (${currentLabel})]`;
+      fetch(`${SERVER_URL}/send-message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomName: myRoomName, sender: fullProfileName, text: "", penaltyDamage: 1 })
+      });
+
+      if (lastMyHP <= 0) {
+        endGame(`敗北しました...（HPが尽き果てた）`, 20);
+        return;
+      }
+
+      // ⌛ 3分タイムアップ判定
       if (remainingTime <= 0) {
-        // ⚖️ タイムアップ！HPが少ないほうが負けルール発動！
         if (lastMyHP > lastEnemyHP) {
           endGame(`タイムアップ！判定勝ち！（あなた:${lastMyHP} VS 相手:${lastEnemyHP}）`, 50);
         } else if (lastMyHP < lastEnemyHP) {
@@ -637,74 +658,10 @@
     }, 1000);
   }
 
-  function startResponseTimer() {
-    const inputField = document.getElementById('message-input');
-    const responseBox = document.getElementById('response-timer-box');
-
-    inputField.oninput = () => {
-      if (!hasStartedTypingThisTurn && inputField.value.length > 0) {
-        hasStartedTypingThisTurn = true; 
-        
-        let penaltyDamage = elapsedSecondsBeforeType * 2; 
-        
-        if (penaltyDamage > 0) {
-          lastMyHP = Math.max(0, lastMyHP - penaltyDamage);
-          responseBox.innerText = `初速遅れで -${penaltyDamage} ダメージ！(安全モード)`;
-          responseBox.style.backgroundColor = "#2ECC71";
-
-          let lvText = myLevel >= 100 ? "MAX" : `Lv.${myLevel}`;
-          let fullProfileName = `${myUsername} [${lvText} (${currentLabel})]`;
-
-          fetch(`${SERVER_URL}/send-message`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ roomName: myRoomName, sender: fullProfileName, text: "", penaltyDamage: penaltyDamage })
-          });
-        } else {
-          responseBox.innerText = `ナイス初速！(安全モード)`;
-          responseBox.style.backgroundColor = "#2ECC71";
-        }
-      }
-    };
-
-    responseMeasureIntervalId = setInterval(() => {
-      if (isGameOverFlag) return;
-      
-      if (!hasStartedTypingThisTurn) {
-        elapsedSecondsBeforeType++;
-        lastMyHP = Math.max(0, lastMyHP - 1);
-        
-        responseBox.innerText = `入力待機中... 経過: ${elapsedSecondsBeforeType}秒 (-1HP/秒)`;
-        responseBox.style.backgroundColor = "#E17055";
-
-        let myHPPercent = (lastMyHP / 2000) * 100;
-        document.getElementById('my-hp-label').innerText = `${myUsername}: ${lastMyHP}/2000`;
-        document.getElementById('my-hp-bar').style.width = `${myHPPercent}%`;
-
-        let lvText = myLevel >= 100 ? "MAX" : `Lv.${myLevel}`;
-        let fullProfileName = `${myUsername} [${lvText} (${currentLabel})]`;
-        fetch(`${SERVER_URL}/send-message`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ roomName: myRoomName, sender: fullProfileName, text: "", penaltyDamage: 1 })
-        });
-
-        if (lastMyHP <= 0) {
-          endGame(`敗北しました...（HPが尽き果てた）`, 20);
-        }
-      }
-    }, 1000);
-  }
-
   function sendMessage() {
     const input = document.getElementById('message-input');
     const text = input.value.trim();
     if (!text || !myRoomName || remainingTime <= 0 || isGameOverFlag) return; 
-
-    hasStartedTypingThisTurn = false; 
-    elapsedSecondsBeforeType = 0;
-    document.getElementById('response-timer-box').innerText = `次の入力を早く始めろ！`;
-    document.getElementById('response-timer-box').style.backgroundColor = "#E17055";
 
     let lvText = myLevel >= 100 ? "MAX" : `Lv.${myLevel}`;
     let fullProfileName = `${myUsername} [${lvText} (${currentLabel})]`;
@@ -740,7 +697,7 @@
           } else { 
             enemyFullNameDisplay = player; 
             enemyHP = actualHP; 
-            lastEnemyHP = enemyHP; // 相手のHPをグローバル変数に退避
+            lastEnemyHP = enemyHP; 
           }
         });
 
@@ -794,7 +751,6 @@
   function endGame(resultMessage, expReward) {
     isGameOverFlag = true;
     clearInterval(timerIntervalId);
-    clearInterval(responseMeasureIntervalId); 
     document.getElementById('message-input').disabled = true;
     document.getElementById('send-btn').disabled = true;
 
@@ -806,7 +762,7 @@
 
     localStorage.setItem('yururon_pending_exp', expReward);
     
-    // 📢 結果を通知して、OKを押したら【即座にロビーへ強制退出】！
+    // 📢 結果ポップアップの後、自動で【即座にロビーへ強制退出】
     alert(resultMessage);
     goBackToMenu();
   }
@@ -814,7 +770,6 @@
   function goBackToMenu() {
     if (chatIntervalId) clearInterval(chatIntervalId);
     if (timerIntervalId) clearInterval(timerIntervalId); 
-    if (responseMeasureIntervalId) clearInterval(responseMeasureIntervalId); 
     if (matchPollIntervalId) clearInterval(matchPollIntervalId);
     myRoomName = '';
     lastMessageCount = 0;
