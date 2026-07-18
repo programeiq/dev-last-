@@ -102,7 +102,6 @@
       justify-content: center;
     }
     .side-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 8px rgba(0,0,0,0.2); }
-    .side-btn:active { transform: translateY(2px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 
     .btn-settings { background-color: #FF7675; color: white; }
     .btn-ranking { background-color: #FFF385; color: #333333; border-color: #333333; }
@@ -168,7 +167,7 @@
     .btn-play:hover { background-color: #F0F8FF; transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
 
 
-    /* --- 🆕 新設定：画像通りのVSマッチング成立画面（グレーベース） --- */
+    /* --- 🆕 VSマッチング成立画面（グレーベース） --- */
     #vs-match-screen {
       display: none;
       flex-direction: column;
@@ -176,10 +175,9 @@
       justify-content: center;
       width: 100vw;
       height: 100vh;
-      background-color: #00A2FF; /* あの青いやつベース */
+      background-color: #00A2FF;
     }
 
-    /* 画像通りのグレーのボックス */
     .vs-match-box {
       background-color: #A0A0A0; /* 灰色 */
       border: 6px solid #FFFFFF;
@@ -195,7 +193,7 @@
       box-sizing: border-box;
     }
 
-    /* カウントダウンタイマー（上部に浮かす） */
+    /* 上部通知バナー（★ここを「お待ちください」と「カウントダウン」で切り替えます） */
     #match-countdown-banner {
       position: absolute;
       top: -60px;
@@ -203,13 +201,13 @@
       color: white;
       padding: 10px 30px;
       border-radius: 30px;
-      font-size: 24px;
+      font-size: 22px;
       font-weight: bold;
       border: 3px solid #FFFFFF;
       box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+      white-space: nowrap;
     }
 
-    /* 左右のプレイヤースロット */
     .match-player-slot {
       display: flex;
       flex-direction: column;
@@ -235,11 +233,11 @@
       height: 100%;
       object-fit: cover;
     }
-    /* アイコンがない場合のテキスト */
     .match-icon-fallback {
       color: #FFFFFF;
       font-size: 18px;
       font-weight: bold;
+      text-align: center;
     }
 
     /* 黒（ダークグレー）のレベルとID枠 */
@@ -258,7 +256,6 @@
       text-overflow: ellipsis;
     }
 
-    /* 中央のVS文字 */
     .match-center-vs {
       font-size: 60px;
       font-weight: 900;
@@ -341,17 +338,15 @@
 </div>
 
 
-<!-- 🆕 新画面：ご指定のVSマッチング演出演出画面 -->
+<!-- VSマッチング演出画面（待機時も最初からこれを出します！） -->
 <div id="vs-match-screen">
   <div class="vs-match-box">
-    <!-- カウントダウン用の上部バナー -->
-    <div id="match-countdown-banner">試合開始まで あと 5 秒...</div>
+    <!-- ★初期テキストを「相手が来るまで、お待ちください...」に変更 -->
+    <div id="match-countdown-banner">相手が来るまで、お待ちください...</div>
 
     <!-- 左側：あなた -->
     <div class="match-player-slot">
-      <div class="match-icon-container" id="match-my-icon-slot">
-        <!-- JSであなたの自慢のアイコンを入れます -->
-      </div>
+      <div class="match-icon-container" id="match-my-icon-slot"></div>
       <div class="match-info-bar" id="match-my-info-bar">Lv.1 あなた</div>
     </div>
 
@@ -361,9 +356,9 @@
     <!-- 右側：対戦相手 -->
     <div class="match-player-slot">
       <div class="match-icon-container" id="match-enemy-icon-slot">
-        <span class="match-icon-fallback">NO IMAGE</span>
+        <span class="match-icon-fallback">WAITING...</span>
       </div>
-      <div class="match-info-bar" id="match-enemy-info-bar">Lv.1 相手のID</div>
+      <div class="match-info-bar" id="match-enemy-info-bar">相手を待っています</div>
     </div>
   </div>
 </div>
@@ -417,6 +412,7 @@
   let matchPollIntervalId = null; 
   let remainingTime = 180; 
   let isGameOverFlag = false;
+  let hasTriggeredCountdown = false; // ★多重カウントダウン防止用
 
   let elapsedSecondsBeforeType = 0; 
   let hasStartedTypingThisTurn = true; 
@@ -462,7 +458,7 @@
         loadUserIcon();
         document.getElementById('display-box').innerText = "お気に入りの写真をアイコンに設定したよ！📸";
       } catch (error) {
-        alert("画像データが大きすぎます。別の写真で試してね！");
+        alert("画像データが大きすぎます。別の写真で試ね！");
       }
     };
     reader.readAsDataURL(file);
@@ -502,7 +498,7 @@
   }
 
   function openItemBox() {
-    let message = "称号着せ替えクローゼット\n変更したい番号を入力してね！\n\n";
+    let message = "称号変更\n番号を入力してね！\n\n";
     itemsList.forEach((item, index) => {
       const isUnlocked = myLevel >= item.lv;
       message += `${index + 1}: [${isUnlocked ? '解放済' : 'Lv.' + item.lv + 'で解放'}] ${item.label}\n`;
@@ -515,7 +511,7 @@
         localStorage.setItem('yururon_label', currentLabel);
         updateUserDataDisplay();
       } else {
-        alert("その称号はレベルが足りません！");
+        alert("レベルが足りません！");
       }
     }
   }
@@ -533,11 +529,34 @@
   }
 
   function showRule() {
-    document.getElementById('display-box').innerHTML = `【ゆるろんの新ルール】\n\n初速がすべて！迷った秒数×30のダメージが自分のHPに直撃！`;
+    document.getElementById('display-box').innerHTML = `初速がすべて！迷った秒数×30ダメージがHPに直撃！`;
   }
 
+  // ★「PLAY」を押した瞬間にVS画面を表示して待機する形にパワーアップ！
   function startMatching() {
-    document.getElementById('display-box').innerHTML = 'STATUS : 人間の対戦相手を探しています...';
+    hasTriggeredCountdown = false;
+
+    // 1. まずメニュー画面を隠して、あのグレーのVS画面を即出し！
+    document.getElementById('menu-screen').style.display = 'none';
+    document.getElementById('vs-match-screen').style.display = 'flex';
+
+    // 2. あなたの現在の情報を枠に表示
+    const mySavedIcon = localStorage.getItem('yururon_user_icon');
+    const myIconSlot = document.getElementById('match-my-icon-slot');
+    if (mySavedIcon) {
+      myIconSlot.innerHTML = `<img src="${mySavedIcon}">`;
+    } else {
+      myIconSlot.innerHTML = `<span class="match-icon-fallback">NO IMAGE</span>`;
+    }
+    let myLvText = myLevel >= 100 ? "MAX" : `Lv.${myLevel}`;
+    document.getElementById('match-my-info-bar').innerText = `${myLvText} ${myUsername}`;
+
+    // 3. 相手のスロットを初期状態（待機中表示）にする
+    document.getElementById('match-countdown-banner').innerText = `相手が来るまで、お待ちください...`;
+    document.getElementById('match-enemy-icon-slot').innerHTML = `<span class="match-icon-fallback">WAITING...</span>`;
+    document.getElementById('match-enemy-info-bar').innerText = `相手を待っています`;
+
+    // 4. バックグラウンドでマッチング確認のループを回す
     pollMatch();
     matchPollIntervalId = setInterval(pollMatch, 1500);
   }
@@ -552,15 +571,15 @@
         if (data.startsWith('MATCHING_SUCCESS')) {
           clearInterval(matchPollIntervalId); 
           
+          if (hasTriggeredCountdown) return; // すでにカウントダウン中ならスルー
+          hasTriggeredCountdown = true;
+
           const parts = data.split(' | ');
           myRoomName = parts[1].split(': ')[1]; 
           const currentTheme = parts[2]; 
 
-          // 相手の名前を簡易抽出
-          let enemyName = "対戦相手";
-          
-          // 🆕 新演出：5秒カウントダウンVS演出の実行
-          runVSMatchSequence(enemyName, currentTheme);
+          // 🆕 相手が来たら、カウントダウン演出に切り替え！
+          runVSMatchCountdown(currentTheme);
         }
       })
       .catch(err => {
@@ -568,28 +587,12 @@
       });
   }
 
-  // 🆕 新機能：画像通りのVS演出画面を動かすロジック
-  function runVSMatchSequence(enemyName, currentTheme) {
-    // 1. メニューを隠してVS演出画面を出す
-    document.getElementById('menu-screen').style.display = 'none';
-    document.getElementById('vs-match-screen').style.display = 'flex';
-
-    // 2. あなたの現在のアイコンと情報をVS枠（茶色・黒）にコピー
-    const mySavedIcon = localStorage.getItem('yururon_user_icon');
-    const myIconSlot = document.getElementById('match-my-icon-slot');
-    if (mySavedIcon) {
-      myIconSlot.innerHTML = `<img src="${mySavedIcon}">`;
-    } else {
-      myIconSlot.innerHTML = `<span class="match-icon-fallback">NO IMAGE</span>`;
-    }
-    let myLvText = myLevel >= 100 ? "MAX" : `Lv.${myLevel}`;
-    document.getElementById('match-my-info-bar').innerText = `${myLvText} ${myUsername}`;
-
-    // 3. 相手の情報をセット（相手の画像はデフォルトでNO IMAGE）
-    document.getElementById('match-enemy-icon-slot').innerHTML = `<span class="match-icon-fallback">READY</span>`;
+  // ★相手が来たあとの5秒カウントダウンを処理する関数
+  function runVSMatchCountdown(currentTheme) {
+    // 相手側の表示を「READY」に更新
+    document.getElementById('match-enemy-icon-slot').innerHTML = `<span class="match-icon-fallback">READY!</span>`;
     document.getElementById('match-enemy-info-bar').innerText = `MATCHED PLAYER`;
 
-    // 4. 5秒カウントダウン開始！
     let countdownValue = 5;
     document.getElementById('match-countdown-banner').innerText = `試合開始まで あと ${countdownValue} 秒...`;
 
@@ -598,11 +601,11 @@
       if (countdownValue <= 0) {
         clearInterval(countdownInterval);
         
-        // 5. 0秒になったらバトル画面へGO！
+        // バトル画面へGO！
         document.getElementById('vs-match-screen').style.display = 'none';
         document.getElementById('debate-screen').style.display = 'flex';
 
-        // 本バトルの初期化
+        // 初期化
         document.getElementById('room-title').innerText = `対戦部屋: ${myRoomName}`;
         document.getElementById('current-theme').innerText = `お題：${currentTheme}`;
         document.getElementById('my-hp-label').innerText = `${myUsername}: 2000`;
@@ -725,7 +728,6 @@
           }
         });
 
-        // バトル中の相手の名前のバー表示をリアルタイム更新
         document.getElementById('enemy-hp-label').innerText = `${enemyFullNameDisplay}: ${enemyHP}/2000`;
 
         let myHPPercent = (myHP / 2000) * 100;
