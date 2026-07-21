@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>ゆるろん</title>
   <style>
-    /* 全体をポップなスカイブルーに */
     body {
       background-color: #00A2FF;
       color: #333333;
@@ -69,9 +68,7 @@
     #user-badge { font-size: 13px; font-weight: bold; opacity: 0.9; }
     #icon-item-label { font-size: 11px; background: #FFFFFF; color: #00A2FF; padding: 2px 8px; border-radius: 10px; font-weight: bold; margin-top: 4px; width: fit-content; cursor: pointer; }
 
-    .right-menu-container {
-      position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column; gap: 12px; z-index: 10;
-    }
+    .right-menu-container { position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column; gap: 12px; z-index: 10; }
 
     .side-btn {
       width: 70px; height: 70px; border-radius: 50%; border: 3px solid #FFFFFF; font-weight: bold; font-size: 13px; cursor: pointer; transition: all 0.1s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.15); outline: none; display: flex; align-items: center; justify-content: center;
@@ -100,6 +97,13 @@
     .match-icon-fallback { color: #FFFFFF; font-size: 18px; font-weight: bold; text-align: center; }
     .match-info-bar { width: 100%; background-color: #3A3A3A; color: #FFFFFF; text-align: center; padding: 12px 5px; font-size: 16px; font-weight: bold; border-radius: 5px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .match-center-vs { font-size: 60px; font-weight: 900; color: #FFF385; text-shadow: 4px 4px 0px #333; font-style: italic; }
+
+    /* 立場選択（どっち派？）モーダル */
+    #side-select-modal { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); flex-direction: column; align-items: center; justify-content: center; z-index: 100; color: white; }
+    .side-modal-box { background: #54A0FF; border: 4px solid white; border-radius: 20px; padding: 30px; text-align: center; max-width: 500px; width: 85%; }
+    .side-btn-choice { margin: 10px; padding: 15px 30px; font-size: 18px; font-weight: bold; border-radius: 15px; border: 3px solid white; cursor: pointer; transition: 0.2s; }
+    .side-btn-a { background-color: #FF7675; color: white; }
+    .side-btn-b { background-color: #1DD1A1; color: white; }
 
     /* バトル画面 */
     #debate-screen { display: none; flex-direction: column; align-items: center; width: 95%; max-width: 700px; height: 85vh; border: 4px solid #FFFFFF; border-radius: 25px; background-color: #54A0FF; padding: 20px; box-shadow: 0 12px 24px rgba(0,0,0,0.15); box-sizing: border-box; }
@@ -184,6 +188,18 @@
   <button class="btn-back" style="margin-top: 20px;" onclick="goBackToMenu()">キャンセルして戻る</button>
 </div>
 
+<!-- どっち派？選択モーダル -->
+<div id="side-select-modal">
+  <div class="side-modal-box">
+    <h2 id="modal-theme-title">お題：〇〇</h2>
+    <p>あなたはどちらの立場で議論しますか？</p>
+    <div>
+      <button class="side-btn-choice side-btn-a" onclick="selectSide('A派')">A派（賛成・あり）</button>
+      <button class="side-btn-choice side-btn-b" onclick="selectSide('B派')">B派（反対・なし）</button>
+    </div>
+  </div>
+</div>
+
 <div id="debate-screen">
   <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 10px;">
     <div id="room-title" style="font-size: 14px; font-weight: bold; color: #FFFFFF;">部屋名: 接続中...</div>
@@ -196,7 +212,7 @@
 
   <div id="timer-panel">
     <div id="game-timer-box" class="time-sub-box">試合残り: 180秒</div>
-    <div id="response-timer-box" class="time-sub-box">バトル中！</div>
+    <div id="response-timer-box" class="time-sub-box">毎秒 -1 HP</div>
   </div>
 
   <div id="hp-container">
@@ -232,13 +248,17 @@
   let isGameOverFlag = false;
   let hasTriggeredCountdown = false;
 
-  let lastMyHP = 2000;
-  let lastEnemyHP = 2000; 
+  let myHP = 2000;
+  let enemyHP = 2000; 
+
+  let kickCount = parseInt(localStorage.getItem('yururon_kick_count')) || 0;
+  let isBanned = localStorage.getItem('yururon_is_banned') === 'true';
 
   let myUsername = localStorage.getItem('yururon_username') || '';
   let myLevel = parseInt(localStorage.getItem('yururon_level')) || 1;
   let myExp = parseInt(localStorage.getItem('yururon_exp')) || 0;
   let currentLabel = localStorage.getItem('yururon_label') || 'ゆるろん初心者';
+  let myChosenSide = '';
 
   const itemsList = [
     { lv: 1, label: 'ゆるろん初心者' },
@@ -324,10 +344,15 @@
   }
 
   function showRule() {
-    document.getElementById('display-box').innerHTML = `1秒ごとにHPが1ずつ自然減少！3分経った時点でHPが【少ないほうが負け】！終わったら【強制退出】！`;
+    document.getElementById('display-box').innerHTML = `【ルール】\n1秒ごとにHPが1ずつ自然減少！\n適当連打（abcdefgh等）は自動Kick！3回KickでBAN！`;
   }
 
   function startMatching() {
+    if (isBanned) {
+      alert("❌ あなたは荒らし行為（適当な連打）によりBANされています。プレイできません。");
+      return;
+    }
+
     hasTriggeredCountdown = false;
     document.getElementById('menu-screen').style.display = 'none';
     document.getElementById('vs-match-screen').style.display = 'flex';
@@ -354,29 +379,27 @@
     fetch(`${SERVER_URL}/match?username=${encodeURIComponent(fullProfileName)}`)
       .then(response => response.text())
       .then(data => {
-        // MATCHING_SUCCESS のレスポンスを検証
         if (data.startsWith('MATCHING_SUCCESS')) {
           const parts = data.split(' | ');
           myRoomName = parts[1].split(': ')[1]; 
           const currentTheme = parts[2];
 
-          // 👻 怪奇現象対策！相手が本当に部屋に居るかをチェック
           fetch(`${SERVER_URL}/get-messages?roomName=${myRoomName}`)
             .then(res => res.json())
             .then(roomData => {
               const hpKeys = Object.keys(roomData.hpData || {});
-              // 部屋に2人（自分と相手）が存在しているか確認！
               const hasEnemy = hpKeys.some(player => !player.includes(myUsername));
 
               if (hasEnemy && !hasTriggeredCountdown) {
                 clearInterval(matchPollIntervalId); 
                 hasTriggeredCountdown = true;
                 
-                // 相手の名前を取得して表示
                 const enemyName = hpKeys.find(player => !player.includes(myUsername)) || "対戦相手";
                 document.getElementById('match-enemy-info-bar').innerText = enemyName;
                 
-                runVSMatchCountdown(currentTheme);
+                // どっち派選択モーダル表示
+                document.getElementById('modal-theme-title').innerText = `お題：${currentTheme}`;
+                document.getElementById('side-select-modal').style.display = 'flex';
               }
             });
         }
@@ -384,11 +407,18 @@
       .catch(err => console.error("通信エラー:", err));
   }
 
-  function runVSMatchCountdown(currentTheme) {
+  function selectSide(side) {
+    myChosenSide = side;
+    document.getElementById('side-select-modal').style.display = 'none';
+    const currentThemeText = document.getElementById('modal-theme-title').innerText;
+    runVSMatchCountdown(currentThemeText);
+  }
+
+  function runVSMatchCountdown(currentThemeText) {
     document.getElementById('match-enemy-icon-slot').innerHTML = `<span class="match-icon-fallback">READY!</span>`;
 
     let countdownValue = 3;
-    document.getElementById('match-countdown-banner').innerText = `対戦相手発見！ あと ${countdownValue} 秒...`;
+    document.getElementById('match-countdown-banner').innerText = `対戦開始まで あと ${countdownValue} 秒...`;
 
     let countdownInterval = setInterval(() => {
       countdownValue--;
@@ -399,18 +429,20 @@
         document.getElementById('debate-screen').style.display = 'flex';
 
         document.getElementById('room-title').innerText = `対戦部屋: ${myRoomName}`;
-        document.getElementById('current-theme').innerText = `お題：${currentTheme}`;
-        document.getElementById('my-hp-label').innerText = `${myUsername}: 2000`;
+        document.getElementById('current-theme').innerText = `${currentThemeText} （あなたの立場: ${myChosenSide}）`;
+        
+        myHP = 2000;
+        enemyHP = 2000;
+        document.getElementById('my-hp-label').innerText = `${myUsername} (${myChosenSide}): 2000`;
+        document.getElementById('enemy-hp-label').innerText = `相手: 2000`;
         document.getElementById('my-hp-bar').style.width = '100%';
         document.getElementById('enemy-hp-bar').style.width = '100%';
         isGameOverFlag = false;
-        lastMyHP = 2000;
-        lastEnemyHP = 2000;
 
         chatIntervalId = setInterval(updateChatLog, 1000);
         startTimer(); 
       } else {
-        document.getElementById('match-countdown-banner').innerText = `対戦相手発見！ あと ${countdownValue} 秒...`;
+        document.getElementById('match-countdown-banner').innerText = `対戦開始まで あと ${countdownValue} 秒...`;
       }
     }, 1000);
   }
@@ -418,43 +450,30 @@
   function startTimer() {
     remainingTime = 180; 
     document.getElementById('game-timer-box').innerText = `試合残り: ${remainingTime}秒`;
-    document.getElementById('response-timer-box').innerText = `毎秒 -1 HP`;
-    document.getElementById('response-timer-box').style.backgroundColor = "#1DD1A1";
-    document.getElementById('message-input').disabled = false;
-    document.getElementById('send-btn').disabled = false;
 
+    // 🛡️ バグ防止：1秒に確実に1ずつ減らす厳格タイマー
     timerIntervalId = setInterval(() => {
       if (isGameOverFlag) return;
       
       remainingTime--;
-
-      // 毎秒 1ずつHPを減らす処理
-      lastMyHP = Math.max(0, lastMyHP - 1);
+      myHP = Math.max(0, myHP - 1);
       
-      let myHPPercent = (lastMyHP / 2000) * 100;
-      document.getElementById('my-hp-label').innerText = `${myUsername}: ${lastMyHP}/2000`;
+      let myHPPercent = (myHP / 2000) * 100;
+      document.getElementById('my-hp-label').innerText = `${myUsername} (${myChosenSide}): ${myHP}/2000`;
       document.getElementById('my-hp-bar').style.width = `${myHPPercent}%`;
 
-      let lvText = myLevel >= 100 ? "MAX" : `Lv.${myLevel}`;
-      let fullProfileName = `${myUsername} [${lvText} (${currentLabel})]`;
-      fetch(`${SERVER_URL}/send-message`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomName: myRoomName, sender: fullProfileName, text: "", penaltyDamage: 1 })
-      });
-
-      if (lastMyHP <= 0) {
+      if (myHP <= 0) {
         endGame(`敗北しました...（HPが尽き果てた）`, 20);
         return;
       }
 
       if (remainingTime <= 0) {
-        if (lastMyHP > lastEnemyHP) {
-          endGame(`タイムアップ！判定勝ち！（あなた:${lastMyHP} VS 相手:${lastEnemyHP}）`, 50);
-        } else if (lastMyHP < lastEnemyHP) {
-          endGame(`タイムアップ！判定負け...（あなた:${lastMyHP} VS 相手:${lastEnemyHP}）`, 20);
+        if (myHP > enemyHP) {
+          endGame(`タイムアップ！判定勝ち！（あなた:${myHP} VS 相手:${enemyHP}）`, 50);
+        } else if (myHP < enemyHP) {
+          endGame(`タイムアップ！判定負け...（あなた:${myHP} VS 相手:${enemyHP}）`, 20);
         } else {
-          endGame(`タイムアップ！引き分け！（同点:${lastMyHP}）`, 20);
+          endGame(`タイムアップ！引き分け！（同点:${myHP}）`, 20);
         }
       } else {
         document.getElementById('game-timer-box').innerText = `試合残り: ${remainingTime}秒`;
@@ -462,13 +481,47 @@
     }, 1000);
   }
 
+  // 🚨 荒らし（abcdefgh等の無意味な連打）判定AIフィルター
+  function isSpamMessage(text) {
+    const cleanText = text.toLowerCase().trim();
+    
+    // ① abcdefgなどのアルファベット順連打を検知
+    if (/abcdef|bcdefg|cdefgh|defghi|efghij|fghijk|ghijkl|asdfgh|zxcvbn/.test(cleanText)) return true;
+
+    // ② 同じ文字の4回以上連打（aaaaa, ｗｗｗｗｗなど）
+    if (/(.)\1{4,}/.test(cleanText)) return true;
+
+    // ③ ひらがな・漢字を含まない完全なランダム英数長文（8文字以上）
+    if (/^[a-z0-9]{8,}$/.test(cleanText) && !/^(ok|hello|google|yahoo|yururon)$/.test(cleanText)) return true;
+
+    return false;
+  }
+
   function sendMessage() {
     const input = document.getElementById('message-input');
     const text = input.value.trim();
     if (!text || !myRoomName || remainingTime <= 0 || isGameOverFlag) return; 
 
+    // 🚨 荒らしメッセージ検知！
+    if (isSpamMessage(text)) {
+      kickCount++;
+      localStorage.setItem('yururon_kick_count', kickCount);
+
+      if (kickCount >= 3) {
+        localStorage.setItem('yururon_is_banned', 'true');
+        isBanned = true;
+        alert("🚨【BAN処罰】不適切な文字連打（abcdefgh等）が3回検知されました。あなたをBANします。");
+        goBackToMenu();
+        return;
+      } else {
+        alert(`⚠️【Kick警告】意味のない文字連打は禁止です！（警告 ${kickCount}/3 回）\n3回でBANになります！`);
+        input.value = '';
+        return;
+      }
+    }
+
     let lvText = myLevel >= 100 ? "MAX" : `Lv.${myLevel}`;
-    let fullProfileName = `${myUsername} [${lvText} (${currentLabel})]`;
+    let fullProfileName = `${myUsername} [${myChosenSide}]`;
 
     fetch(`${SERVER_URL}/send-message`, {
       method: 'POST',
@@ -486,39 +539,19 @@
         const messages = data.messages || [];
         const hpData = data.hpData || {};
 
-        let myHP = 2000;
-        let enemyHP = 2000;
         let enemyFullNameDisplay = "相手";
         let cleanMyName = myUsername.trim();
 
         Object.keys(hpData).forEach(player => {
-          let currentRawHP = hpData[player];
-          let actualHP = currentRawHP <= 100 ? currentRawHP * 20 : currentRawHP;
-
-          if (player === myUsername || player.startsWith(myUsername + " [") || player.trim().startsWith(cleanMyName)) { 
-            myHP = actualHP; 
-            if (lastMyHP < myHP) { myHP = lastMyHP; } else { lastMyHP = myHP; }
-          } else { 
+          if (!player.includes(cleanMyName)) { 
             enemyFullNameDisplay = player; 
-            enemyHP = actualHP; 
-            lastEnemyHP = enemyHP; 
           }
         });
 
+        // 相手のHP（1秒ごとに1減ると仮定して同期）
+        enemyHP = Math.max(0, enemyHP - 1);
         document.getElementById('enemy-hp-label').innerText = `${enemyFullNameDisplay}: ${enemyHP}/2000`;
-
-        let myHPPercent = (myHP / 2000) * 100;
-        let enemyHPPercent = (enemyHP / 2000) * 100;
-
-        document.getElementById('my-hp-label').innerText = `${myUsername}: ${myHP}/2000`;
-        document.getElementById('my-hp-bar').style.width = `${myHPPercent}%`;
-        document.getElementById('enemy-hp-bar').style.width = `${enemyHPPercent}%`;
-
-        if (!isGameOverFlag) {
-          if (myHP <= 0 && enemyHP <= 0) { endGame("相打ち！", 20); } 
-          else if (myHP <= 0) { endGame(`敗北しました...`, 20); } 
-          else if (enemyHP <= 0) { endGame(`あなたの勝ち！`, 50); } 
-        }
+        document.getElementById('enemy-hp-bar').style.width = `${(enemyHP / 2000) * 100}%`;
 
         if (messages.length === lastMessageCount) return;
         const chatBox = document.getElementById('chat-box');
@@ -529,7 +562,7 @@
           const rowElement = document.createElement('div');
           rowElement.classList.add('message-row');
           
-          if (msg.sender === myUsername || msg.sender.startsWith(myUsername + " [") || msg.sender.trim().startsWith(cleanMyName)) { 
+          if (msg.sender.includes(cleanMyName)) { 
             rowElement.classList.add('my-message'); 
           } else { 
             rowElement.classList.add('other-message'); 
@@ -578,6 +611,7 @@
     document.getElementById('chat-box').innerHTML = '';
     document.getElementById('debate-screen').style.display = 'none';
     document.getElementById('vs-match-screen').style.display = 'none';
+    document.getElementById('side-select-modal').style.display = 'none';
     document.getElementById('menu-screen').style.display = 'flex';
     document.getElementById('display-box').innerHTML = 'STATUS : READY';
 
