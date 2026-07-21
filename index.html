@@ -325,7 +325,7 @@
   }
 
   function showRule() {
-    document.getElementById('display-box').innerHTML = `【ルール】\n1秒ごとにHPが1ずつ自然減少！\n立場はランダム決定！適当連打は自動Kick＆3回でBAN！`;
+    document.getElementById('display-box').innerHTML = `【ルール】\n1秒ごとにHPが1ずつ自然減少！\n立場はランダム決定（前者派／後者派）！適当連打は自動Kick＆3回でBAN！`;
   }
 
   function startMatching() {
@@ -378,8 +378,8 @@
                 const enemyName = hpKeys.find(player => !player.includes(myUsername)) || "対戦相手";
                 document.getElementById('match-enemy-info-bar').innerText = enemyName;
                 
-                // 🎲 立場（A派かB派）をランダムで自動決定！
-                myChosenSide = Math.random() < 0.5 ? 'A派(賛成)' : 'B派(反対)';
+                // 🎲 「前者派」か「後者派」かをランダム決定！
+                myChosenSide = Math.random() < 0.5 ? '前者派' : '後者派';
                 
                 runVSMatchCountdown(currentTheme);
               }
