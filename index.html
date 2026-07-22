@@ -593,6 +593,15 @@
         if (type === 'ranking') displayBox.innerHTML = `ランキング\n\n${data}`;
       });
   }
+  // コンソールから unbanAll() を実行するとBANが解除される関数
+function unbanAll() {
+  localStorage.removeItem('yururon_is_banned');
+  localStorage.removeItem('yururon_kick_count');
+  isBanned = false;
+  kickCount = 0;
+  alert("🔓 BAN状態とKickカウントをすべてリセットしました！");
+  location.reload();
+}
 </script>
 </body>
 </html>
