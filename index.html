@@ -230,13 +230,17 @@
   let isGameOverFlag = false;
   let hasTriggeredCountdown = false;
   let isTyping = false; 
-  let isMatchEstablished = false; // マッチング成立フラグ
+  let isMatchEstablished = false; 
 
   let myHP = 2000;
   let enemyHP = 2000; 
 
+  // ★放置・連打対策用の変数
   let kickCount = parseInt(localStorage.getItem('yururon_kick_count')) || 0;
   let isBanned = localStorage.getItem('yururon_is_banned') === 'true';
+  let lastActionTime = Date.now(); // 最後に操作（入力・送信）した時間
+  let lastInputValue = "";
+  let sameInputKeepCount = 0; // 同じ入力状態を維持し続けた秒数
 
   let myUsername = localStorage.getItem('yururon_username') || '';
   let myLevel = parseInt(localStorage.getItem('yururon_level')) || 1;
@@ -259,6 +263,7 @@
   }
 
   const messageInputElem = document.getElementById('message-input');
+  
   messageInputElem.addEventListener('focus', () => {
     isTyping = true;
     document.getElementById('response-timer-box').innerText = "入力中：HP減少ストップ！";
@@ -269,6 +274,11 @@
     isTyping = false;
     document.getElementById('response-timer-box').innerText = "毎秒 -1 HP";
     document.getElementById('response-timer-box').style.backgroundColor = "#1DD1A1";
+  });
+
+  // キー入力イベントで「アクティブ時間」を更新
+  messageInputElem.addEventListener('input', () => {
+    lastActionTime = Date.now();
   });
 
   function triggerImageUpload() { document.getElementById('icon-file-input').click(); }
@@ -341,7 +351,7 @@
   }
 
   function showRule() {
-    document.getElementById('display-box').innerHTML = `【ルール】\n1秒ごとにHPが1ずつ自然減少！（文字入力中はストップ！）\n途中離脱は相手の不戦勝！適当連打は自動Kick＆3回でBAN！`;
+    document.getElementById('display-box').innerHTML = `【ルール】\n1秒ごとにHPが1ずつ自然減少！（入力中はストップ！）\n※30秒以上の無入力放置や、入力状態キープによる放置は警告対象！3回警告でBAN！`;
   }
 
   function clearAllTimers() {
@@ -353,7 +363,7 @@
 
   function startMatching() {
     if (isBanned) {
-      alert("❌ あなたは荒らし行為（適当な連打）によりBANされています。プレイできません。");
+      alert("❌ あなたは不正行為（放置・連打など）によりBANされています。プレイできません。");
       return;
     }
 
@@ -401,7 +411,6 @@
               if (hasEnemy && !hasTriggeredCountdown) {
                 if (matchPollIntervalId) clearInterval(matchPollIntervalId); 
                 hasTriggeredCountdown = true;
-                isMatchEstablished = true;
                 
                 const enemyName = hpKeys.find(player => !player.includes(myUsername)) || "対戦相手";
                 document.getElementById('match-enemy-info-bar').innerText = enemyName;
@@ -423,15 +432,13 @@
     document.getElementById('match-countdown-banner').innerText = `対戦開始まで あと ${countdownValue} 秒...`;
 
     countdownIntervalId = setInterval(() => {
-      // カウントダウン中も相手が離脱していないかチェック
       fetch(`${SERVER_URL}/get-messages?roomName=${myRoomName}`)
         .then(res => res.json())
         .then(roomData => {
           const hpKeys = Object.keys(roomData.hpData || {});
-          if (!roomData || hpKeys.length < 2) {
-            // 相手がカウントダウン中に抜けた場合
+          if (!roomData || hpKeys.length < 2 || roomData.error) {
             clearInterval(countdownIntervalId);
-            endGame("相手が退出（キャンセル）したため、あなたの不戦勝です！🎉", 50);
+            endGame("相手が退出したため、あなたの不戦勝です！🎉", 50);
             return;
           }
         }).catch(() => {
@@ -443,6 +450,8 @@
       if (countdownValue <= 0) {
         clearInterval(countdownIntervalId);
         
+        isMatchEstablished = true;
+
         document.getElementById('vs-match-screen').style.display = 'none';
         document.getElementById('debate-screen').style.display = 'flex';
 
@@ -458,6 +467,10 @@
         myHP = 2000;
         enemyHP = 2000;
         isTyping = false;
+        lastActionTime = Date.now();
+        sameInputKeepCount = 0;
+        lastInputValue = "";
+
         document.getElementById('response-timer-box').innerText = "毎秒 -1 HP";
         document.getElementById('response-timer-box').style.backgroundColor = "#1DD1A1";
 
@@ -482,7 +495,32 @@
       if (isGameOverFlag) return;
       
       remainingTime--;
+      const currentInputValue = messageInputElem.value;
 
+      // ★不正チェック1: キー押しっぱなし（入力保持）で文字入力中に見せかける放置を検知
+      if (isTyping && currentInputValue.length > 0) {
+        if (currentInputValue === lastInputValue) {
+          sameInputKeepCount++;
+          if (sameInputKeepCount >= 10) { // 10秒間同じ入力テキストのまま放置
+            triggerPenalty("⚠️「長押し・入力キープ放置」が検知されました！");
+            isTyping = false; // 強制的にHP減少を再開
+          }
+        } else {
+          sameInputKeepCount = 0;
+        }
+      } else {
+        sameInputKeepCount = 0;
+      }
+      lastInputValue = currentInputValue;
+
+      // ★不正チェック2: 30秒間なにも操作（入力・送信）していない完全放置を検知
+      if (Date.now() - lastActionTime > 30000) {
+        endGame("⚠️ 30秒間操作がなかったため、放置ペナルティで敗北しました。", 0);
+        triggerPenalty("⚠️「完全放置」が検知されました！");
+        return;
+      }
+
+      // 通常のHP減少処理（入力中かつ不正がない場合のみストップ）
       if (!isTyping) {
         myHP = Math.max(0, myHP - 1);
       }
@@ -510,6 +548,21 @@
     }, 1000);
   }
 
+  // 警告＆BAN判定処理
+  function triggerPenalty(reasonMessage) {
+    kickCount++;
+    localStorage.setItem('yururon_kick_count', kickCount);
+
+    if (kickCount >= 3) {
+      localStorage.setItem('yururon_is_banned', 'true');
+      isBanned = true;
+      alert(`🚨【BAN処罰】不正・放置行為が3回検知されました。あなたのアカウントをBANします。`);
+      goBackToMenu(true);
+    } else {
+      alert(`${reasonMessage}\n（警告 ${kickCount}/3 回）※3回でBANになります！`);
+    }
+  }
+
   function isSpamMessage(text) {
     const cleanText = text.toLowerCase().trim();
     if (/abcdef|bcdefg|cdefgh|defghi|efghij|fghijk|ghijkl|asdfgh|zxcvbn/.test(cleanText)) return true;
@@ -523,21 +576,12 @@
     const text = input.value.trim();
     if (!text || !myRoomName || remainingTime <= 0 || isGameOverFlag) return; 
 
-    if (isSpamMessage(text)) {
-      kickCount++;
-      localStorage.setItem('yururon_kick_count', kickCount);
+    lastActionTime = Date.now(); // 送信成功時に操作時間を更新
 
-      if (kickCount >= 3) {
-        localStorage.setItem('yururon_is_banned', 'true');
-        isBanned = true;
-        alert("🚨【BAN処罰】不適切な文字連打（abcdefgh等）が3回検知されました。あなたをBANします。");
-        goBackToMenu(true);
-        return;
-      } else {
-        alert(`⚠️【Kick警告】意味のない文字連打は禁止です！（警告 ${kickCount}/3 回）\n3回でBANになります！`);
-        input.value = '';
-        return;
-      }
+    if (isSpamMessage(text)) {
+      triggerPenalty("⚠️「意味のない文字連打」は禁止です！");
+      input.value = '';
+      return;
     }
 
     let fullProfileName = `${myUsername} [${myChosenSide}]`;
@@ -554,67 +598,72 @@
 
   function updateChatLog() {
     if (!myRoomName || isGameOverFlag) return;
+
     fetch(`${SERVER_URL}/get-messages?roomName=${myRoomName}`)
-      .then(response => response.text())
-      .then(textData => {
-        try {
-          const data = JSON.parse(textData);
-          const messages = data.messages || [];
-          const hpData = data.hpData || {};
-          const hpKeys = Object.keys(hpData);
-
-          // ★マッチング完了後、相手が退出した判定
-          if (isMatchEstablished && (hpKeys.length < 2 || data.error)) {
-            endGame("相手が退出したため、あなたの不戦勝です！🎉", 50);
-            return;
-          }
-
-          let enemyFullNameDisplay = "相手";
-          let cleanMyName = myUsername.trim();
-
-          hpKeys.forEach(player => {
-            if (!player.includes(cleanMyName)) { 
-              enemyFullNameDisplay = player; 
-            }
-          });
-
-          document.getElementById('enemy-hp-label').innerText = `${enemyFullNameDisplay}: ${enemyHP}/2000`;
-          document.getElementById('enemy-hp-bar').style.width = `${(enemyHP / 2000) * 100}%`;
-
-          if (messages.length === lastMessageCount) return;
-          const chatBox = document.getElementById('chat-box');
-          chatBox.innerHTML = ''; 
-
-          messages.forEach(msg => {
-            if (!msg.text || msg.text === "") return; 
-            const rowElement = document.createElement('div');
-            rowElement.classList.add('message-row');
-            
-            if (msg.sender.includes(cleanMyName)) { 
-              rowElement.classList.add('my-message'); 
-            } else { 
-              rowElement.classList.add('other-message'); 
-            }
-
-            const nameElement = document.createElement('div');
-            nameElement.classList.add('sender-name');
-            nameElement.innerText = msg.sender;
-
-            const bubbleElement = document.createElement('div');
-            bubbleElement.classList.add('bubble');
-            bubbleElement.innerText = msg.text;
-
-            rowElement.appendChild(nameElement);
-            rowElement.appendChild(bubbleElement);
-            chatBox.appendChild(rowElement);
-          });
-          chatBox.scrollTop = chatBox.scrollHeight; 
-          lastMessageCount = messages.length; 
-        } catch(e) {
-          // 部屋がすでに削除されていた場合（相手が抜け済）
+      .then(response => response.json())
+      .then(data => {
+        if (data.error || !data.hpData) {
           if (isMatchEstablished) {
             endGame("相手が退出したため、あなたの不戦勝です！🎉", 50);
           }
+          return;
+        }
+
+        const messages = data.messages || [];
+        const hpData = data.hpData || {};
+        const hpKeys = Object.keys(hpData);
+
+        const cleanMyName = myUsername.trim();
+        const hasEnemy = hpKeys.some(player => !player.includes(cleanMyName));
+
+        if (isMatchEstablished && !hasEnemy) {
+          endGame("相手が退出したため、あなたの不戦勝です！🎉", 50);
+          return;
+        }
+
+        let enemyFullNameDisplay = "相手";
+        hpKeys.forEach(player => {
+          if (!player.includes(cleanMyName)) { 
+            enemyFullNameDisplay = player; 
+          }
+        });
+
+        document.getElementById('enemy-hp-label').innerText = `${enemyFullNameDisplay}: ${enemyHP}/2000`;
+        document.getElementById('enemy-hp-bar').style.width = `${(enemyHP / 2000) * 100}%`;
+
+        if (messages.length === lastMessageCount) return;
+        const chatBox = document.getElementById('chat-box');
+        chatBox.innerHTML = ''; 
+
+        messages.forEach(msg => {
+          if (!msg.text || msg.text === "") return; 
+          const rowElement = document.createElement('div');
+          rowElement.classList.add('message-row');
+          
+          if (msg.sender.includes(cleanMyName)) { 
+            rowElement.classList.add('my-message'); 
+          } else { 
+            rowElement.classList.add('other-message'); 
+          }
+
+          const nameElement = document.createElement('div');
+          nameElement.classList.add('sender-name');
+          nameElement.innerText = msg.sender;
+
+          const bubbleElement = document.createElement('div');
+          bubbleElement.classList.add('bubble');
+          bubbleElement.innerText = msg.text;
+
+          rowElement.appendChild(nameElement);
+          rowElement.appendChild(bubbleElement);
+          chatBox.appendChild(rowElement);
+        });
+        chatBox.scrollTop = chatBox.scrollHeight; 
+        lastMessageCount = messages.length; 
+      })
+      .catch(err => {
+        if (isMatchEstablished) {
+          endGame("相手が退出したため、あなたの不戦勝です！🎉", 50);
         }
       });
   }
@@ -643,7 +692,6 @@
   function goBackToMenu(isSelfQuit = false) {
     clearAllTimers();
 
-    // 自ら途中で「降参」や「キャンセル」をして抜けた場合
     if (isSelfQuit && myRoomName) {
       fetch(`${SERVER_URL}/game-over`, {
         method: 'POST',
