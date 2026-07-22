@@ -230,7 +230,7 @@
   let isGameOverFlag = false;
   let hasTriggeredCountdown = false;
   let isTyping = false; 
-  let hasGameStarted = false; // 試合が始まっているかどうか
+  let isMatchEstablished = false; // マッチング成立フラグ
 
   let myHP = 2000;
   let enemyHP = 2000; 
@@ -258,7 +258,6 @@
     localStorage.setItem('yururon_username', myUsername);
   }
 
-  // 入力フォーカスの検知イベント
   const messageInputElem = document.getElementById('message-input');
   messageInputElem.addEventListener('focus', () => {
     isTyping = true;
@@ -360,7 +359,8 @@
 
     clearAllTimers();
     hasTriggeredCountdown = false;
-    hasGameStarted = false;
+    isMatchEstablished = false;
+    isGameOverFlag = false;
 
     document.getElementById('menu-screen').style.display = 'none';
     document.getElementById('vs-match-screen').style.display = 'flex';
@@ -401,6 +401,7 @@
               if (hasEnemy && !hasTriggeredCountdown) {
                 if (matchPollIntervalId) clearInterval(matchPollIntervalId); 
                 hasTriggeredCountdown = true;
+                isMatchEstablished = true;
                 
                 const enemyName = hpKeys.find(player => !player.includes(myUsername)) || "対戦相手";
                 document.getElementById('match-enemy-info-bar').innerText = enemyName;
@@ -422,23 +423,25 @@
     document.getElementById('match-countdown-banner').innerText = `対戦開始まで あと ${countdownValue} 秒...`;
 
     countdownIntervalId = setInterval(() => {
-      // カウントダウン中も相手が抜けていないかチェック
+      // カウントダウン中も相手が離脱していないかチェック
       fetch(`${SERVER_URL}/get-messages?roomName=${myRoomName}`)
         .then(res => res.json())
         .then(roomData => {
           const hpKeys = Object.keys(roomData.hpData || {});
-          if (hpKeys.length < 2) {
-            // 相手がカウントダウン中にキャンセルして抜けた場合
+          if (!roomData || hpKeys.length < 2) {
+            // 相手がカウントダウン中に抜けた場合
             clearInterval(countdownIntervalId);
-            endGame("相手が切断（キャンセル）したため、不戦勝となりました！🎉", 50);
+            endGame("相手が退出（キャンセル）したため、あなたの不戦勝です！🎉", 50);
             return;
           }
+        }).catch(() => {
+          clearInterval(countdownIntervalId);
+          endGame("相手が退出したため、あなたの不戦勝です！🎉", 50);
         });
 
       countdownValue--;
       if (countdownValue <= 0) {
         clearInterval(countdownIntervalId);
-        hasGameStarted = true;
         
         document.getElementById('vs-match-screen').style.display = 'none';
         document.getElementById('debate-screen').style.display = 'flex';
@@ -462,7 +465,6 @@
         document.getElementById('enemy-hp-label').innerText = `相手: 2000`;
         document.getElementById('my-hp-bar').style.width = '100%';
         document.getElementById('enemy-hp-bar').style.width = '100%';
-        isGameOverFlag = false;
 
         chatIntervalId = setInterval(updateChatLog, 1000);
         startTimer(); 
@@ -561,8 +563,8 @@
           const hpData = data.hpData || {};
           const hpKeys = Object.keys(hpData);
 
-          // ★対戦相手の途中抜け判定（試合開始後にプレイヤー数が減っていた場合）
-          if (hasGameStarted && hpKeys.length < 2) {
+          // ★マッチング完了後、相手が退出した判定
+          if (isMatchEstablished && (hpKeys.length < 2 || data.error)) {
             endGame("相手が退出したため、あなたの不戦勝です！🎉", 50);
             return;
           }
@@ -609,7 +611,10 @@
           chatBox.scrollTop = chatBox.scrollHeight; 
           lastMessageCount = messages.length; 
         } catch(e) {
-          console.error("JSON解析エラー", e);
+          // 部屋がすでに削除されていた場合（相手が抜け済）
+          if (isMatchEstablished) {
+            endGame("相手が退出したため、あなたの不戦勝です！🎉", 50);
+          }
         }
       });
   }
@@ -638,7 +643,7 @@
   function goBackToMenu(isSelfQuit = false) {
     clearAllTimers();
 
-    // 自ら途中で「降参」や「キャンセル」をして抜けた場合の通知
+    // 自ら途中で「降参」や「キャンセル」をして抜けた場合
     if (isSelfQuit && myRoomName) {
       fetch(`${SERVER_URL}/game-over`, {
         method: 'POST',
@@ -650,7 +655,7 @@
     myRoomName = '';
     lastMessageCount = 0;
     isTyping = false;
-    hasGameStarted = false;
+    isMatchEstablished = false;
     document.getElementById('chat-box').innerHTML = '';
     document.getElementById('debate-screen').style.display = 'none';
     document.getElementById('vs-match-screen').style.display = 'none';
