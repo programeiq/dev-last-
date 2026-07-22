@@ -102,7 +102,7 @@
     #debate-screen { display: none; flex-direction: column; align-items: center; width: 95%; max-width: 700px; height: 85vh; border: 4px solid #FFFFFF; border-radius: 25px; background-color: #54A0FF; padding: 20px; box-shadow: 0 12px 24px rgba(0,0,0,0.15); box-sizing: border-box; }
     #theme-info { width: 100%; background-color: #FF7675; border: 3px solid #FFFFFF; border-radius: 15px; padding: 12px; text-align: center; color: white; font-weight: bold; margin-bottom: 10px; box-sizing: border-box; }
     #timer-panel { width: 100%; display: flex; justify-content: space-between; margin-bottom: 10px; gap: 10px; }
-    .time-sub-box { flex: 1; text-align: center; font-size: 14px; font-weight: bold; padding: 8px; border-radius: 10px; border: 2px solid #FFFFFF; }
+    .time-sub-box { flex: 1; text-align: center; font-size: 14px; font-weight: bold; padding: 8px; border-radius: 10px; border: 2px solid #FFFFFF; transition: background-color 0.2s; }
     #game-timer-box { background-color: #FFEAA7; color: #333333; }
     #response-timer-box { background-color: #1DD1A1; color: white; }
 
@@ -178,13 +178,13 @@
       <div class="match-info-bar" id="match-enemy-info-bar">相手を待っています</div>
     </div>
   </div>
-  <button class="btn-back" style="margin-top: 20px;" onclick="goBackToMenu()">キャンセルして戻る</button>
+  <button class="btn-back" style="margin-top: 20px;" onclick="goBackToMenu(true)">キャンセルして戻る</button>
 </div>
 
 <div id="debate-screen">
   <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 10px;">
     <div id="room-title" style="font-size: 14px; font-weight: bold; color: #FFFFFF;">部屋名: 接続中...</div>
-    <button class="btn-back" onclick="goBackToMenu()">降参して戻る</button>
+    <button class="btn-back" onclick="goBackToMenu(true)">降参して戻る</button>
   </div>
 
   <div id="theme-info">
@@ -229,6 +229,8 @@
   let remainingTime = 180; 
   let isGameOverFlag = false;
   let hasTriggeredCountdown = false;
+  let isTyping = false; 
+  let hasGameStarted = false; // 試合が始まっているかどうか
 
   let myHP = 2000;
   let enemyHP = 2000; 
@@ -255,7 +257,21 @@
     myUsername = prompt('ユーザーネームを入力してください！') || '名無しさん';
     localStorage.setItem('yururon_username', myUsername);
   }
-  
+
+  // 入力フォーカスの検知イベント
+  const messageInputElem = document.getElementById('message-input');
+  messageInputElem.addEventListener('focus', () => {
+    isTyping = true;
+    document.getElementById('response-timer-box').innerText = "入力中：HP減少ストップ！";
+    document.getElementById('response-timer-box').style.backgroundColor = "#FF7675";
+  });
+
+  messageInputElem.addEventListener('blur', () => {
+    isTyping = false;
+    document.getElementById('response-timer-box').innerText = "毎秒 -1 HP";
+    document.getElementById('response-timer-box').style.backgroundColor = "#1DD1A1";
+  });
+
   function triggerImageUpload() { document.getElementById('icon-file-input').click(); }
 
   function handleImageUpload(event) {
@@ -326,10 +342,9 @@
   }
 
   function showRule() {
-    document.getElementById('display-box').innerHTML = `【ルール】\n1秒ごとにHPが1ずつ自然減少！\n立場はランダム決定（前者派／後者派）！適当連打は自動Kick＆3回でBAN！`;
+    document.getElementById('display-box').innerHTML = `【ルール】\n1秒ごとにHPが1ずつ自然減少！（文字入力中はストップ！）\n途中離脱は相手の不戦勝！適当連打は自動Kick＆3回でBAN！`;
   }
 
-  // タイマーや通信の一括完全クリア（ゴスマ・重なり防止）
   function clearAllTimers() {
     if (chatIntervalId) { clearInterval(chatIntervalId); chatIntervalId = null; }
     if (timerIntervalId) { clearInterval(timerIntervalId); timerIntervalId = null; }
@@ -343,8 +358,9 @@
       return;
     }
 
-    clearAllTimers(); // 古いタイマーをすべて消去
+    clearAllTimers();
     hasTriggeredCountdown = false;
+    hasGameStarted = false;
 
     document.getElementById('menu-screen').style.display = 'none';
     document.getElementById('vs-match-screen').style.display = 'flex';
@@ -406,14 +422,27 @@
     document.getElementById('match-countdown-banner').innerText = `対戦開始まで あと ${countdownValue} 秒...`;
 
     countdownIntervalId = setInterval(() => {
+      // カウントダウン中も相手が抜けていないかチェック
+      fetch(`${SERVER_URL}/get-messages?roomName=${myRoomName}`)
+        .then(res => res.json())
+        .then(roomData => {
+          const hpKeys = Object.keys(roomData.hpData || {});
+          if (hpKeys.length < 2) {
+            // 相手がカウントダウン中にキャンセルして抜けた場合
+            clearInterval(countdownIntervalId);
+            endGame("相手が切断（キャンセル）したため、不戦勝となりました！🎉", 50);
+            return;
+          }
+        });
+
       countdownValue--;
       if (countdownValue <= 0) {
         clearInterval(countdownIntervalId);
+        hasGameStarted = true;
         
         document.getElementById('vs-match-screen').style.display = 'none';
         document.getElementById('debate-screen').style.display = 'flex';
 
-        // 対戦UIの完全初期化（ゴスマ防止）
         document.getElementById('chat-box').innerHTML = '';
         lastMessageCount = 0;
         document.getElementById('message-input').disabled = false;
@@ -425,6 +454,10 @@
         
         myHP = 2000;
         enemyHP = 2000;
+        isTyping = false;
+        document.getElementById('response-timer-box').innerText = "毎秒 -1 HP";
+        document.getElementById('response-timer-box').style.backgroundColor = "#1DD1A1";
+
         document.getElementById('my-hp-label').innerText = `${myUsername} (${myChosenSide}): 2000`;
         document.getElementById('enemy-hp-label').innerText = `相手: 2000`;
         document.getElementById('my-hp-bar').style.width = '100%';
@@ -447,7 +480,10 @@
       if (isGameOverFlag) return;
       
       remainingTime--;
-      myHP = Math.max(0, myHP - 1);
+
+      if (!isTyping) {
+        myHP = Math.max(0, myHP - 1);
+      }
       
       let myHPPercent = (myHP / 2000) * 100;
       document.getElementById('my-hp-label').innerText = `${myUsername} (${myChosenSide}): ${myHP}/2000`;
@@ -493,7 +529,7 @@
         localStorage.setItem('yururon_is_banned', 'true');
         isBanned = true;
         alert("🚨【BAN処罰】不適切な文字連打（abcdefgh等）が3回検知されました。あなたをBANします。");
-        goBackToMenu();
+        goBackToMenu(true);
         return;
       } else {
         alert(`⚠️【Kick警告】意味のない文字連打は禁止です！（警告 ${kickCount}/3 回）\n3回でBANになります！`);
@@ -509,71 +545,83 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ roomName: myRoomName, sender: fullProfileName, text: text })
     });
+
     input.value = '';
+    input.blur();
   }
 
   function updateChatLog() {
     if (!myRoomName || isGameOverFlag) return;
     fetch(`${SERVER_URL}/get-messages?roomName=${myRoomName}`)
-      .then(response => response.json())
-      .then(data => {
-        const messages = data.messages || [];
-        const hpData = data.hpData || {};
+      .then(response => response.text())
+      .then(textData => {
+        try {
+          const data = JSON.parse(textData);
+          const messages = data.messages || [];
+          const hpData = data.hpData || {};
+          const hpKeys = Object.keys(hpData);
 
-        let enemyFullNameDisplay = "相手";
-        let cleanMyName = myUsername.trim();
-
-        Object.keys(hpData).forEach(player => {
-          if (!player.includes(cleanMyName)) { 
-            enemyFullNameDisplay = player; 
-          }
-        });
-
-        enemyHP = Math.max(0, enemyHP - 1);
-        document.getElementById('enemy-hp-label').innerText = `${enemyFullNameDisplay}: ${enemyHP}/2000`;
-        document.getElementById('enemy-hp-bar').style.width = `${(enemyHP / 2000) * 100}%`;
-
-        if (messages.length === lastMessageCount) return;
-        const chatBox = document.getElementById('chat-box');
-        chatBox.innerHTML = ''; 
-
-        messages.forEach(msg => {
-          if (!msg.text || msg.text === "") return; 
-          const rowElement = document.createElement('div');
-          rowElement.classList.add('message-row');
-          
-          if (msg.sender.includes(cleanMyName)) { 
-            rowElement.classList.add('my-message'); 
-          } else { 
-            rowElement.classList.add('other-message'); 
+          // ★対戦相手の途中抜け判定（試合開始後にプレイヤー数が減っていた場合）
+          if (hasGameStarted && hpKeys.length < 2) {
+            endGame("相手が退出したため、あなたの不戦勝です！🎉", 50);
+            return;
           }
 
-          const nameElement = document.createElement('div');
-          nameElement.classList.add('sender-name');
-          nameElement.innerText = msg.sender;
+          let enemyFullNameDisplay = "相手";
+          let cleanMyName = myUsername.trim();
 
-          const bubbleElement = document.createElement('div');
-          bubbleElement.classList.add('bubble');
-          bubbleElement.innerText = msg.text;
+          hpKeys.forEach(player => {
+            if (!player.includes(cleanMyName)) { 
+              enemyFullNameDisplay = player; 
+            }
+          });
 
-          rowElement.appendChild(nameElement);
-          rowElement.appendChild(bubbleElement);
-          chatBox.appendChild(rowElement);
-        });
-        chatBox.scrollTop = chatBox.scrollHeight; 
-        lastMessageCount = messages.length; 
+          document.getElementById('enemy-hp-label').innerText = `${enemyFullNameDisplay}: ${enemyHP}/2000`;
+          document.getElementById('enemy-hp-bar').style.width = `${(enemyHP / 2000) * 100}%`;
+
+          if (messages.length === lastMessageCount) return;
+          const chatBox = document.getElementById('chat-box');
+          chatBox.innerHTML = ''; 
+
+          messages.forEach(msg => {
+            if (!msg.text || msg.text === "") return; 
+            const rowElement = document.createElement('div');
+            rowElement.classList.add('message-row');
+            
+            if (msg.sender.includes(cleanMyName)) { 
+              rowElement.classList.add('my-message'); 
+            } else { 
+              rowElement.classList.add('other-message'); 
+            }
+
+            const nameElement = document.createElement('div');
+            nameElement.classList.add('sender-name');
+            nameElement.innerText = msg.sender;
+
+            const bubbleElement = document.createElement('div');
+            bubbleElement.classList.add('bubble');
+            bubbleElement.innerText = msg.text;
+
+            rowElement.appendChild(nameElement);
+            rowElement.appendChild(bubbleElement);
+            chatBox.appendChild(rowElement);
+          });
+          chatBox.scrollTop = chatBox.scrollHeight; 
+          lastMessageCount = messages.length; 
+        } catch(e) {
+          console.error("JSON解析エラー", e);
+        }
       });
   }
 
   function endGame(resultMessage, expReward) {
     if (isGameOverFlag) return;
     isGameOverFlag = true;
-    clearAllTimers(); // タイマー・通信の完全停止
+    clearAllTimers();
 
     document.getElementById('message-input').disabled = true;
     document.getElementById('send-btn').disabled = true;
 
-    // サーバーへ部屋消去を通知
     if (myRoomName) {
       fetch(`${SERVER_URL}/game-over`, {
         method: 'POST',
@@ -584,14 +632,14 @@
 
     localStorage.setItem('yururon_pending_exp', expReward);
     alert(resultMessage);
-    goBackToMenu();
+    goBackToMenu(false);
   }
 
-  function goBackToMenu() {
-    clearAllTimers(); // タイマー・通信の完全停止
+  function goBackToMenu(isSelfQuit = false) {
+    clearAllTimers();
 
-    // サーバーに残っている自分の部屋を消去依頼
-    if (myRoomName) {
+    // 自ら途中で「降参」や「キャンセル」をして抜けた場合の通知
+    if (isSelfQuit && myRoomName) {
       fetch(`${SERVER_URL}/game-over`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -601,6 +649,8 @@
 
     myRoomName = '';
     lastMessageCount = 0;
+    isTyping = false;
+    hasGameStarted = false;
     document.getElementById('chat-box').innerHTML = '';
     document.getElementById('debate-screen').style.display = 'none';
     document.getElementById('vs-match-screen').style.display = 'none';
