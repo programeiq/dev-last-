@@ -1,6 +1,4 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
+<!DOCTYPE html><html lang="ja"><head>
   <meta charset="UTF-8">
   <title>ゆるろん</title>
   <style>
@@ -124,11 +122,7 @@
     #message-input { flex-grow: 1; padding: 15px; font-size: 16px; border: 3px solid #FFFFFF; border-radius: 15px; outline: none; }
     #send-btn { padding: 15px 30px; font-size: 16px; background-color: #FFD166; color: #333333; border: 3px solid #FFFFFF; border-radius: 15px; cursor: pointer; font-weight: bold; }
     .btn-back { padding: 8px 18px; font-size: 14px; background-color: #FF7675; border-radius: 20px; border: 2px solid #FFFFFF; color: white; font-weight: bold; cursor: pointer;}
-  </style>
-</head>
-<body>
-
-<div id="menu-screen">
+  </style></head><body><div id="menu-screen">
   <div id="user-profile-area">
     <div id="user-icon-slot" onclick="triggerImageUpload()" title="クリックして写真をアップロード！">
       <img id="custom-icon-img" style="display:none;">
@@ -157,10 +151,7 @@
 
   <div class="bottom-btn-container">
     <button class="btn-play" onclick="startMatching()">PLAY</button>
-  </div>
-</div>
-
-<div id="vs-match-screen">
+  </div></div><div id="vs-match-screen">
   <div class="vs-match-box">
     <div id="match-countdown-banner">相手を探しています...</div>
 
@@ -178,10 +169,7 @@
       <div class="match-info-bar" id="match-enemy-info-bar">相手を待っています</div>
     </div>
   </div>
-  <button class="btn-back" style="margin-top: 20px;" onclick="goBackToMenu(true)">キャンセルして戻る</button>
-</div>
-
-<div id="debate-screen">
+  <button class="btn-back" style="margin-top: 20px;" onclick="goBackToMenu(true)">キャンセルして戻る</button></div><div id="debate-screen">
   <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 10px;">
     <div id="room-title" style="font-size: 14px; font-weight: bold; color: #FFFFFF;">部屋名: 接続中...</div>
     <button class="btn-back" onclick="goBackToMenu(true)">降参して戻る</button>
@@ -214,10 +202,7 @@
   <div class="chat-input-container">
     <input type="text" id="message-input" placeholder="自分の意見を入力...">
     <button id="send-btn" onclick="sendMessage()">送信</button>
-  </div>
-</div>
-
-<script>
+  </div></div><script>
   const SERVER_URL = 'https://dev-last-production.up.railway.app';
   
   let myRoomName = '';
@@ -226,6 +211,8 @@
   let timerIntervalId = null; 
   let matchPollIntervalId = null; 
   let countdownIntervalId = null;
+  let typingTimeoutId = null;
+
   let remainingTime = 180; 
   let isGameOverFlag = false;
   let hasTriggeredCountdown = false;
@@ -235,12 +222,11 @@
   let myHP = 2000;
   let enemyHP = 2000; 
 
-  // ★放置・連打対策用の変数
   let kickCount = parseInt(localStorage.getItem('yururon_kick_count')) || 0;
   let isBanned = localStorage.getItem('yururon_is_banned') === 'true';
-  let lastActionTime = Date.now(); // 最後に操作（入力・送信）した時間
+  let lastActionTime = Date.now(); 
   let lastInputValue = "";
-  let sameInputKeepCount = 0; // 同じ入力状態を維持し続けた秒数
+  let sameInputKeepCount = 0; 
 
   let myUsername = localStorage.getItem('yururon_username') || '';
   let myLevel = parseInt(localStorage.getItem('yururon_level')) || 1;
@@ -264,21 +250,25 @@
 
   const messageInputElem = document.getElementById('message-input');
   
-  messageInputElem.addEventListener('focus', () => {
-    isTyping = true;
-    document.getElementById('response-timer-box').innerText = "入力中：HP減少ストップ！";
-    document.getElementById('response-timer-box').style.backgroundColor = "#FF7675";
-  });
-
-  messageInputElem.addEventListener('blur', () => {
-    isTyping = false;
-    document.getElementById('response-timer-box').innerText = "毎秒 -1 HP";
-    document.getElementById('response-timer-box').style.backgroundColor = "#1DD1A1";
-  });
-
-  // キー入力イベントで「アクティブ時間」を更新
   messageInputElem.addEventListener('input', () => {
     lastActionTime = Date.now();
+    
+    if (messageInputElem.value.trim().length > 0) {
+      isTyping = true;
+      document.getElementById('response-timer-box').innerText = "タイピング中：HP減少ストップ！";
+      document.getElementById('response-timer-box').style.backgroundColor = "#FF7675";
+
+      if (typingTimeoutId) clearTimeout(typingTimeoutId);
+      typingTimeoutId = setTimeout(() => {
+        isTyping = false;
+        document.getElementById('response-timer-box').innerText = "毎秒 -1 HP";
+        document.getElementById('response-timer-box').style.backgroundColor = "#1DD1A1";
+      }, 3000);
+    } else {
+      isTyping = false;
+      document.getElementById('response-timer-box').innerText = "毎秒 -1 HP";
+      document.getElementById('response-timer-box').style.backgroundColor = "#1DD1A1";
+    }
   });
 
   function triggerImageUpload() { document.getElementById('icon-file-input').click(); }
@@ -351,7 +341,7 @@
   }
 
   function showRule() {
-    document.getElementById('display-box').innerHTML = `【ルール】\n1秒ごとにHPが1ずつ自然減少！（入力中はストップ！）\n※30秒以上の無入力放置や、入力状態キープによる放置は警告対象！3回警告でBAN！`;
+    document.getElementById('display-box').innerHTML = `【ルール】\n1秒ごとにHPが1ずつ自然減少！（文字入力中のみストップ！）\n※1分間（60秒）の無入力放置や、入力状態キープによる放置は警告対象！3回警告でBAN！`;
   }
 
   function clearAllTimers() {
@@ -359,6 +349,7 @@
     if (timerIntervalId) { clearInterval(timerIntervalId); timerIntervalId = null; }
     if (matchPollIntervalId) { clearInterval(matchPollIntervalId); matchPollIntervalId = null; }
     if (countdownIntervalId) { clearInterval(countdownIntervalId); countdownIntervalId = null; }
+    if (typingTimeoutId) { clearTimeout(typingTimeoutId); typingTimeoutId = null; }
   }
 
   function startMatching() {
@@ -438,12 +429,13 @@
           const hpKeys = Object.keys(roomData.hpData || {});
           if (!roomData || hpKeys.length < 2 || roomData.error) {
             clearInterval(countdownIntervalId);
-            endGame("相手が退出したため、あなたの不戦勝です！🎉", 50);
+            // 相手が離脱した場合、部屋を出てメニューに戻る
+            goBackToMenu(false);
             return;
           }
         }).catch(() => {
           clearInterval(countdownIntervalId);
-          endGame("相手が退出したため、あなたの不戦勝です！🎉", 50);
+          goBackToMenu(false);
         });
 
       countdownValue--;
@@ -497,13 +489,12 @@
       remainingTime--;
       const currentInputValue = messageInputElem.value;
 
-      // ★不正チェック1: キー押しっぱなし（入力保持）で文字入力中に見せかける放置を検知
       if (isTyping && currentInputValue.length > 0) {
         if (currentInputValue === lastInputValue) {
           sameInputKeepCount++;
-          if (sameInputKeepCount >= 10) { // 10秒間同じ入力テキストのまま放置
+          if (sameInputKeepCount >= 10) { 
             triggerPenalty("⚠️「長押し・入力キープ放置」が検知されました！");
-            isTyping = false; // 強制的にHP減少を再開
+            isTyping = false; 
           }
         } else {
           sameInputKeepCount = 0;
@@ -513,14 +504,13 @@
       }
       lastInputValue = currentInputValue;
 
-      // ★不正チェック2: 30秒間なにも操作（入力・送信）していない完全放置を検知
-      if (Date.now() - lastActionTime > 30000) {
-        endGame("⚠️ 30秒間操作がなかったため、放置ペナルティで敗北しました。", 0);
-        triggerPenalty("⚠️「完全放置」が検知されました！");
+      // ★【変更点1】AFK放置判定を30秒(30000)から1分(60000ミリ秒)に変更
+      if (Date.now() - lastActionTime > 60000) {
+        triggerPenalty("⚠️「1分間の完全放置」が検知されました！");
+        endGame("⚠️ 1分間操作がなかったため、放置ペナルティで敗北しました。", 0);
         return;
       }
 
-      // 通常のHP減少処理（入力中かつ不正がない場合のみストップ）
       if (!isTyping) {
         myHP = Math.max(0, myHP - 1);
       }
@@ -548,7 +538,6 @@
     }, 1000);
   }
 
-  // 警告＆BAN判定処理
   function triggerPenalty(reasonMessage) {
     kickCount++;
     localStorage.setItem('yururon_kick_count', kickCount);
@@ -576,7 +565,7 @@
     const text = input.value.trim();
     if (!text || !myRoomName || remainingTime <= 0 || isGameOverFlag) return; 
 
-    lastActionTime = Date.now(); // 送信成功時に操作時間を更新
+    lastActionTime = Date.now(); 
 
     if (isSpamMessage(text)) {
       triggerPenalty("⚠️「意味のない文字連打」は禁止です！");
@@ -593,6 +582,9 @@
     });
 
     input.value = '';
+    isTyping = false; 
+    document.getElementById('response-timer-box').innerText = "毎秒 -1 HP";
+    document.getElementById('response-timer-box').style.backgroundColor = "#1DD1A1";
     input.blur();
   }
 
@@ -602,9 +594,11 @@
     fetch(`${SERVER_URL}/get-messages?roomName=${myRoomName}`)
       .then(response => response.json())
       .then(data => {
+        // ★【変更点2】相手が退出・キックなどでいなくなった場合、自分も自動で退出してメニューに戻る
         if (data.error || !data.hpData) {
           if (isMatchEstablished) {
-            endGame("相手が退出したため、あなたの不戦勝です！🎉", 50);
+            alert("相手が退出またはキックされたため、部屋を出ます。");
+            goBackToMenu(false);
           }
           return;
         }
@@ -616,8 +610,10 @@
         const cleanMyName = myUsername.trim();
         const hasEnemy = hpKeys.some(player => !player.includes(cleanMyName));
 
+        // 相手が消えていることを検知したら即メニューに戻る
         if (isMatchEstablished && !hasEnemy) {
-          endGame("相手が退出したため、あなたの不戦勝です！🎉", 50);
+          alert("相手が退出またはキックされたため、部屋を出ます。");
+          goBackToMenu(false);
           return;
         }
 
@@ -663,7 +659,8 @@
       })
       .catch(err => {
         if (isMatchEstablished) {
-          endGame("相手が退出したため、あなたの不戦勝です！🎉", 50);
+          alert("通信エラーまたは相手の切断を検知したため、部屋を出ます。");
+          goBackToMenu(false);
         }
       });
   }
@@ -724,7 +721,4 @@
       .then(data => {
         if (type === 'ranking') displayBox.innerHTML = `ランキング\n\n${data}`;
       });
-  }
-</script>
-</body>
-</html>
+  }</script></body></html>
