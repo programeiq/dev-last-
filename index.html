@@ -225,6 +225,7 @@
   let chatIntervalId = null;
   let timerIntervalId = null; 
   let matchPollIntervalId = null; 
+  let countdownIntervalId = null;
   let remainingTime = 180; 
   let isGameOverFlag = false;
   let hasTriggeredCountdown = false;
@@ -328,13 +329,23 @@
     document.getElementById('display-box').innerHTML = `【ルール】\n1秒ごとにHPが1ずつ自然減少！\n立場はランダム決定（前者派／後者派）！適当連打は自動Kick＆3回でBAN！`;
   }
 
+  // タイマーや通信の一括完全クリア（ゴスマ・重なり防止）
+  function clearAllTimers() {
+    if (chatIntervalId) { clearInterval(chatIntervalId); chatIntervalId = null; }
+    if (timerIntervalId) { clearInterval(timerIntervalId); timerIntervalId = null; }
+    if (matchPollIntervalId) { clearInterval(matchPollIntervalId); matchPollIntervalId = null; }
+    if (countdownIntervalId) { clearInterval(countdownIntervalId); countdownIntervalId = null; }
+  }
+
   function startMatching() {
     if (isBanned) {
       alert("❌ あなたは荒らし行為（適当な連打）によりBANされています。プレイできません。");
       return;
     }
 
+    clearAllTimers(); // 古いタイマーをすべて消去
     hasTriggeredCountdown = false;
+
     document.getElementById('menu-screen').style.display = 'none';
     document.getElementById('vs-match-screen').style.display = 'flex';
 
@@ -372,13 +383,12 @@
               const hasEnemy = hpKeys.some(player => !player.includes(myUsername));
 
               if (hasEnemy && !hasTriggeredCountdown) {
-                clearInterval(matchPollIntervalId); 
+                if (matchPollIntervalId) clearInterval(matchPollIntervalId); 
                 hasTriggeredCountdown = true;
                 
                 const enemyName = hpKeys.find(player => !player.includes(myUsername)) || "対戦相手";
                 document.getElementById('match-enemy-info-bar').innerText = enemyName;
                 
-                // 🎲 「前者派」か「後者派」かをランダム決定！
                 myChosenSide = Math.random() < 0.5 ? '前者派' : '後者派';
                 
                 runVSMatchCountdown(currentTheme);
@@ -395,13 +405,20 @@
     let countdownValue = 3;
     document.getElementById('match-countdown-banner').innerText = `対戦開始まで あと ${countdownValue} 秒...`;
 
-    let countdownInterval = setInterval(() => {
+    countdownIntervalId = setInterval(() => {
       countdownValue--;
       if (countdownValue <= 0) {
-        clearInterval(countdownInterval);
+        clearInterval(countdownIntervalId);
         
         document.getElementById('vs-match-screen').style.display = 'none';
         document.getElementById('debate-screen').style.display = 'flex';
+
+        // 対戦UIの完全初期化（ゴスマ防止）
+        document.getElementById('chat-box').innerHTML = '';
+        lastMessageCount = 0;
+        document.getElementById('message-input').disabled = false;
+        document.getElementById('send-btn').disabled = false;
+        document.getElementById('message-input').value = '';
 
         document.getElementById('room-title').innerText = `対戦部屋: ${myRoomName}`;
         document.getElementById('current-theme').innerText = `お題: ${currentThemeText} （あなたの立場: ${myChosenSide}）`;
@@ -485,7 +502,6 @@
       }
     }
 
-    let lvText = myLevel >= 100 ? "MAX" : `Lv.${myLevel}`;
     let fullProfileName = `${myUsername} [${myChosenSide}]`;
 
     fetch(`${SERVER_URL}/send-message`, {
@@ -497,7 +513,7 @@
   }
 
   function updateChatLog() {
-    if (!myRoomName) return;
+    if (!myRoomName || isGameOverFlag) return;
     fetch(`${SERVER_URL}/get-messages?roomName=${myRoomName}`)
       .then(response => response.json())
       .then(data => {
@@ -550,16 +566,21 @@
   }
 
   function endGame(resultMessage, expReward) {
+    if (isGameOverFlag) return;
     isGameOverFlag = true;
-    clearInterval(timerIntervalId);
+    clearAllTimers(); // タイマー・通信の完全停止
+
     document.getElementById('message-input').disabled = true;
     document.getElementById('send-btn').disabled = true;
 
-    fetch(`${SERVER_URL}/game-over`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ roomName: myRoomName })
-    });
+    // サーバーへ部屋消去を通知
+    if (myRoomName) {
+      fetch(`${SERVER_URL}/game-over`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomName: myRoomName })
+      }).catch(err => console.error(err));
+    }
 
     localStorage.setItem('yururon_pending_exp', expReward);
     alert(resultMessage);
@@ -567,9 +588,17 @@
   }
 
   function goBackToMenu() {
-    if (chatIntervalId) clearInterval(chatIntervalId);
-    if (timerIntervalId) clearInterval(timerIntervalId); 
-    if (matchPollIntervalId) clearInterval(matchPollIntervalId);
+    clearAllTimers(); // タイマー・通信の完全停止
+
+    // サーバーに残っている自分の部屋を消去依頼
+    if (myRoomName) {
+      fetch(`${SERVER_URL}/game-over`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomName: myRoomName })
+      }).catch(err => console.error(err));
+    }
+
     myRoomName = '';
     lastMessageCount = 0;
     document.getElementById('chat-box').innerHTML = '';
@@ -593,15 +622,6 @@
         if (type === 'ranking') displayBox.innerHTML = `ランキング\n\n${data}`;
       });
   }
-  // コンソールから unbanAll() を実行するとBANが解除される関数
-function unbanAll() {
-  localStorage.removeItem('yururon_is_banned');
-  localStorage.removeItem('yururon_kick_count');
-  isBanned = false;
-  kickCount = 0;
-  alert("🔓 BAN状態とKickカウントをすべてリセットしました！");
-  location.reload();
-}
 </script>
 </body>
 </html>
