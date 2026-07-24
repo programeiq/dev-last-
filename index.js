@@ -17,17 +17,13 @@ const PORT = process.env.PORT || 3000;
 let waitingPlayer = null;
 let rooms = {};
 
-// ★ IDをキーにしてプレイヤーデータを管理する
-let playerRankings = {
-  "user_1001": { name: "ディベート神", level: 99, exp: 50, label: "伝説", updatedAt: Date.now() },
-  "user_1002": { name: "論理の鬼", level: 42, exp: 10, label: "ベテラン", updatedAt: Date.now() }
-};
+// ★ ダミーデータをすべて消去！空の状態でスタートします
+let playerRankings = {};
 
 // データの更新・保存関数
 function saveOrUpdatePlayer(userId, name, level, exp, label) {
   if (!userId) return;
 
-  // プレイヤーが存在しない、またはレベル/EXPが上の場合に更新
   const current = playerRankings[userId];
   if (!current || level > current.level || (level === current.level && exp > current.exp)) {
     playerRankings[userId] = {
@@ -40,7 +36,7 @@ function saveOrUpdatePlayer(userId, name, level, exp, label) {
   }
 }
 
-// ★ 定期更新用API（フロントから5分ごとに叩かれる）
+// 5分ごとの定期送信API
 app.post('/update-score', (req, res) => {
   const { userId, name, level, exp, label } = req.body;
   if (!userId) {
@@ -103,9 +99,8 @@ app.post('/game-over', (req, res) => {
   res.json({ status: 'cleaned' });
 });
 
-// ★ ID付き・レベル順ランキング表示API
+// ランキング取得API
 app.get('/ranking', (req, res) => {
-  // 配列化してレベル（Lv）順 -> EXP順で並び替え
   let sortedList = Object.keys(playerRankings).map(id => {
     return {
       id: id,
@@ -116,6 +111,10 @@ app.get('/ranking', (req, res) => {
     return b.exp - a.exp;
   });
 
+  if (sortedList.length === 0) {
+    return res.send("【殿堂入り IDレベルランキング】\n\n現在ランキングデータはありません。");
+  }
+
   let text = "【殿堂入り IDレベルランキング TOP3】\n\n";
   const top10 = sortedList.slice(0, 10);
 
@@ -125,7 +124,6 @@ app.get('/ranking', (req, res) => {
     else if (index === 1) crown = "🥈 ";
     else if (index === 2) crown = "🥉 ";
 
-    // IDを一部伏字にする場合はここで加工も可能
     const displayId = player.id.length > 12 ? player.id.substring(0, 10) + "..." : player.id;
 
     text += `${crown}${index + 1}位 : ${player.name} (ID: ${displayId})\n`;
