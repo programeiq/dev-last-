@@ -135,14 +135,14 @@ app.get('/ranking', (req, res) => {
   });
 
   // 上位10件を綺麗にフォーマット
-  let text = "🏆【レベル最強ランキング TOP10】🏆\n\n";
+  let text = "【レベル最強ランキング TOP3】\n\n";
   const top10 = sortedList.slice(0, 10);
 
   top10.forEach((player, index) => {
     let crown = "  ";
-    if (index === 0) ;
-    else if (index === 1)  ;
-    else if (index === 2)  ";
+    if (index === 0) crown = "🥇 ";
+    else if (index === 1) crown = "🥈 ";
+    else if (index === 2) crown = "🥉 ";
 
     let lvDisplay = player.level >= 100 ? "Lv.MAX" : `Lv.${player.level}`;
     text += `${crown}${index + 1}位 : ${player.name}\n`;
