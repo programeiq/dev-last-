@@ -206,7 +206,7 @@
   <!-- ポップアップ：ルール説明画面 -->
   <div id="rule-modal" class="modal-overlay">
     <div class="modal-content">
-      <div class="modal-header">📖 ゆるろんルール解説</div>
+      <div class="modal-header"> ゆるろんルール解説</div>
       <div class="modal-body">
 【基本ルール】
 1. マッチングした相手と出されたお題でディベート！
@@ -220,8 +220,8 @@
 ・または180秒（3分）経過時に相手よりHPが多ければ勝ち！
 
 【注意・禁止事項】
-⚠️ 1分間（60秒）完全に放置すると放置ペナルティで敗北します。
-⚠️ 意味のない適当な連打や文字入力キープの放置は警告対象です！（3回警告でアカウントBAN）
+ 1分間（60秒）完全に放置すると放置ペナルティで敗北します。
+ 意味のない適当な連打や文字入力キープの放置は警告対象です！（3回警告でアカウントBAN）
       </div>
       <button class="modal-close-btn" onclick="closeModal('rule-modal')">閉じる</button>
     </div>
@@ -456,7 +456,7 @@
 
     function startMatching() {
       if (isBanned) {
-        alert("❌ あなたは不正行為（放置・連打など）によりBANされています。プレイできません。");
+        alert(" あなたは不正行為（放置・連打など）によりBANされています。プレイできません。");
         return;
       }
 
@@ -594,7 +594,7 @@
           if (currentInputValue === lastInputValue) {
             sameInputKeepCount++;
             if (sameInputKeepCount >= 10) { 
-              triggerPenalty("⚠️「長押し・入力キープ放置」が検知されました！");
+              triggerPenalty("「長押し・入力キープ放置」が検知されました！");
               isTyping = false; 
             }
           } else {
@@ -606,8 +606,8 @@
         lastInputValue = currentInputValue;
 
         if (Date.now() - lastActionTime > 60000) {
-          triggerPenalty("⚠️「1分間の完全放置」が検知されました！");
-          endGame("⚠️ 1分間操作がなかったため、放置ペナルティで敗北しました。", 0);
+          triggerPenalty("「1分間の完全放置」が検知されました！");
+          endGame(" 1分間操作がなかったため、放置ペナルティで敗北しました。", 0);
           return;
         }
 
@@ -645,7 +645,7 @@
       if (kickCount >= 3) {
         localStorage.setItem('yururon_is_banned', 'true');
         isBanned = true;
-        alert(`🚨【BAN処罰】不正・放置行為が3回検知されました。あなたのアカウントをBANします。`);
+        alert(`【BAN処罰】不正・放置行為が3回検知されました。あなたのアカウントをBANします。`);
         goBackToMenu(true);
       } else {
         alert(`${reasonMessage}\n（警告 ${kickCount}/3 回）※3回でBANになります！`);
@@ -668,7 +668,7 @@
       lastActionTime = Date.now(); 
 
       if (isSpamMessage(text)) {
-        triggerPenalty("⚠️「意味のない文字連打」は禁止です！");
+        triggerPenalty("「意味のない文字連打」は禁止です！");
         input.value = '';
         return;
       }
@@ -695,7 +695,7 @@
       input.blur();
 
       if (enemyHP <= 0) {
-        endGame("勝利！相手のHPを削りきりました！🎉", 50);
+        endGame("勝利！相手のHPを削りきりました！", 50);
       }
     }
 
@@ -741,7 +741,7 @@
           document.getElementById('enemy-hp-bar').style.width = `${enemyHPPercent}%`;
 
           if (enemyHP <= 0) {
-            endGame("勝利！相手のHPが0になりました！🎉", 50);
+            endGame("勝利！相手のHPが0になりました！", 50);
             return;
           }
 
