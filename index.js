@@ -52,24 +52,48 @@ app.get('/match', (req, res) => {
   const username = req.query.username || '名無し';
   const userId = req.query.userId || `guest_${Date.now()}`;
 
-  if (waitingPlayer && waitingPlayer.username !== username) {
+  // 1. もし待機中のプレイヤーが自分自身（または同じID）なら、古い待機をリセット
+  if (waitingPlayer && (waitingPlayer.userId === userId || waitingPlayer.username === username)) {
+    waitingPlayer = null;
+  }
+
+  // 2. 他の待機プレイヤーがいる場合 ➔ マッチング成立！
+  if (waitingPlayer) {
     const roomName = `room_${Date.now()}`;
-    const themes = ["キノコの山 VS タケノコの里", "朝食は パン派 VS ごはん派", "猫派 VS 犬派"];
+    const themes = [
+      { topic: "キノコの山 VS タケノコの里", sideA: "キノコの山", sideB: "タケノコの里" },
+      { topic: "朝食は パン派 VS ごはん派", sideA: "パン派", sideB: "ごはん派" },
+      { topic: "猫派 VS 犬派", sideA: "猫派", sideB: "犬派" },
+      { topic: "夏 VS 冬", sideA: "夏", sideB: "冬" }
+    ];
     const selectedTheme = themes[Math.floor(Math.random() * themes.length)];
 
     rooms[roomName] = {
-      theme: selectedTheme,
+      theme: selectedTheme.topic,
       messages: [],
       hpData: { [waitingPlayer.username]: 2000, [username]: 2000 }
     };
 
     const opponent = waitingPlayer;
-    waitingPlayer = null;
+    waitingPlayer = null; // 待機枠を空にする
 
-    opponent.res.send(`MATCHING_SUCCESS | Room: ${roomName} | ${selectedTheme}`);
-    res.send(`MATCHING_SUCCESS | Room: ${roomName} | ${selectedTheme}`);
+    // 1人目（待っていた人）＝ 前者(sideA)
+    opponent.res.send(`MATCHING_SUCCESS | Room: ${roomName} | ${selectedTheme.topic} | YOUR_SIDE: ${selectedTheme.sideA}`);
+    
+    // 2人目（今来た人）＝ 後者(sideB)
+    res.send(`MATCHING_SUCCESS | Room: ${roomName} | ${selectedTheme.topic} | YOUR_SIDE: ${selectedTheme.sideB}`);
+
   } else {
+    // 3. 誰も待っていない場合 ➔ 自分が待機プレイヤーになる
     waitingPlayer = { username, userId, res };
+
+    // ★ 💡 【ここが重要！】
+    // 待機中にブラウザを閉じたりリロードしたりしたら、即座に幽霊データを削除する！
+    req.on('close', () => {
+      if (waitingPlayer && waitingPlayer.res === res) {
+        waitingPlayer = null;
+      }
+    });
   }
 });
 
