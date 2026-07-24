@@ -197,7 +197,7 @@
   <!-- ポップアップ：ランキング画面 -->
   <div id="ranking-modal" class="modal-overlay">
     <div class="modal-content">
-      <div class="modal-header">🏆 殿堂入りランキング</div>
+      <div class="modal-header">殿堂入りランキング</div>
       <div id="ranking-modal-body" class="modal-body">読み込み中...</div>
       <button class="modal-close-btn" onclick="closeModal('ranking-modal')">閉じる</button>
     </div>
@@ -287,6 +287,45 @@
   </div>
 
   <script>
+    // --- 1. ユーザー独自のIDを取得（なければ生成して保存） ---
+function getOrCreateUserId() {
+  let userId = localStorage.getItem('yururon_user_id');
+  if (!userId) {
+    userId = 'id_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+    localStorage.setItem('yururon_user_id', userId);
+  }
+  return userId;
+}
+
+const myUserId = getOrCreateUserId();
+
+// --- 2. サーバーへ自分のレベル情報を送信する関数 ---
+function sendScoreToRanking() {
+  // 現在のレベルや名前を取得（ゲームの変数に合わせて調整してください）
+  const currentName = localStorage.getItem('yururon_player_name') || '名無し';
+  const currentLevel = parseInt(localStorage.getItem('yururon_level')) || 1;
+  const currentExp = parseInt(localStorage.getItem('yururon_exp')) || 0;
+  const currentLabel = localStorage.getItem('yururon_label') || '一般人';
+
+  fetch('https://あなたのサーバーのURL/update-score', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      userId: myUserId,
+      name: currentName,
+      level: currentLevel,
+      exp: currentExp,
+      label: currentLabel
+    })
+  })
+  .then(res => res.json())
+  .then(data => console.log('【自動更新】ランキングデータを同期しました:', data))
+  .catch(err => console.error('ランキング自動更新エラー:', err));
+}
+
+// --- 3. 起動時に1度送信 ＋ 5分（300,000ms）ごとに自動実行 ---
+sendScoreToRanking(); // 初回送信
+setInterval(sendScoreToRanking, 5 * 60 * 1000); // 5分ごとに繰り返し実行
     const SERVER_URL = 'https://dev-last-production.up.railway.app';
     
     let myRoomName = '';
