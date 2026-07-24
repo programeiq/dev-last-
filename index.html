@@ -282,7 +282,7 @@
       try {
         localStorage.setItem('yururon_user_icon', e.target.result);
         loadUserIcon();
-        document.getElementById('display-box').innerText = "お気に入りの写真をアイコンに設定したよ！📸";
+        document.getElementById('display-box').innerText = "お気に入りの写真をアイコンに設定したよ！";
       } catch (error) { alert("画像データが大きすぎます。別の写真で試してね！"); }
     };
     reader.readAsDataURL(file);
@@ -354,7 +354,7 @@
 
   function startMatching() {
     if (isBanned) {
-      alert("❌ あなたは不正行為（放置・連打など）によりBANされています。プレイできません。");
+      alert("あなたは不正行為（放置・連打など）によりBANされています。プレイできません。");
       return;
     }
 
@@ -493,7 +493,7 @@
         if (currentInputValue === lastInputValue) {
           sameInputKeepCount++;
           if (sameInputKeepCount >= 10) { 
-            triggerPenalty("⚠️「長押し・入力キープ放置」が検知されました！");
+            triggerPenalty("長押し・入力キープ放置」が検知されました！");
             isTyping = false; 
           }
         } else {
@@ -506,8 +506,8 @@
 
       // ★【変更点1】AFK放置判定を30秒(30000)から1分(60000ミリ秒)に変更
       if (Date.now() - lastActionTime > 60000) {
-        triggerPenalty("⚠️「1分間の完全放置」が検知されました！");
-        endGame("⚠️ 1分間操作がなかったため、放置ペナルティで敗北しました。", 0);
+        triggerPenalty("1分間の完全放置」が検知されました！");
+        endGame("1分間操作がなかったため、放置ペナルティで敗北しました。", 0);
         return;
       }
 
@@ -545,7 +545,7 @@
     if (kickCount >= 3) {
       localStorage.setItem('yururon_is_banned', 'true');
       isBanned = true;
-      alert(`🚨【BAN処罰】不正・放置行為が3回検知されました。あなたのアカウントをBANします。`);
+      alert("【BAN処罰】不正・放置行為が3回検知されました。あなたのアカウントをBANします。`);
       goBackToMenu(true);
     } else {
       alert(`${reasonMessage}\n（警告 ${kickCount}/3 回）※3回でBANになります！`);
@@ -568,7 +568,7 @@
     lastActionTime = Date.now(); 
 
     if (isSpamMessage(text)) {
-      triggerPenalty("⚠️「意味のない文字連打」は禁止です！");
+      triggerPenalty("「意味のない文字連打」は禁止です！");
       input.value = '';
       return;
     }
