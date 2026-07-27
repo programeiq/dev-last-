@@ -3,67 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>レスバオンライン</title>
+  <title>ゆるろん</title>
   <style>
     body {
       font-family: sans-serif;
       text-align: center;
       background-color: #f0f2f5;
       padding: 20px;
-      margin: 0;
     }
-
-    /* 画面右上のBGM切替ボタン */
-    .audio-control {
-      position: fixed;
-      top: 15px;
-      right: 15px;
-      z-index: 100;
-    }
-    .audio-btn {
-      background: #ffffff;
-      border: 2px solid #ccc;
-      border-radius: 20px;
-      padding: 8px 16px;
-      font-size: 14px;
-      cursor: pointer;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      transition: all 0.2s;
-    }
-    .audio-btn:hover {
-      background: #eef;
-    }
-
     .card {
       background: white;
       padding: 20px;
       border-radius: 10px;
       max-width: 400px;
-      margin: 40px auto 0 auto;
+      margin: 0 auto;
       box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
-
-    input, button.action-btn {
+    input, button {
       padding: 10px;
-      margin: 10px 0;
+      margin: 5px;
       font-size: 16px;
-      width: 80%;
-      box-sizing: border-box;
     }
-
-    button.action-btn {
-      background-color: #007bff;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-
-    button.action-btn:disabled {
-      background-color: #ccc;
-      cursor: not-allowed;
-    }
-
     #battle-screen {
       display: none;
     }
@@ -71,71 +31,53 @@
 </head>
 <body>
 
-  <!-- 🎵 BGM設定（loop属性で無限リピート再生） -->
+  <!-- BGM用オーディオ -->
   <audio id="bgm" src="bgm.mp3" loop></audio>
-
-  <!-- 右上のBGM切り替えボタン -->
-  <div class="audio-control">
-    <button id="toggle-bgm-btn" class="audio-btn" onclick="toggleBGM()">🎵 BGM: ON</button>
-  </div>
 
   <!-- マッチング待機画面 -->
   <div id="lobby-screen" class="card">
-    <h1>レスバオンライン</h1>
+    <h1>ゆるろん</h1>
     <p>名前を入力して対戦相手を探そう！</p>
     <input type="text" id="username" placeholder="プレイヤー名" value="プレイヤー1"><br>
-    <button id="start-btn" class="action-btn" onclick="startMatching()">対戦相手を探す</button>
+    <button id="start-btn" onclick="startMatching()">対戦相手を探す</button>
+    <button id="bgm-btn" onclick="toggleBGM()">BGM: ON</button>
     <p id="status-text" style="color: #666;"></p>
   </div>
 
   <!-- 対戦画面 -->
   <div id="battle-screen" class="card">
-    <h2>🔥 レスバ開始！ 🔥</h2>
+    <h2>ゆるろん開始！</h2>
     <p id="room-info"></p>
-    <p id="theme-info" style="font-size: 18px; font-weight: bold; color: #333;"></p>
-    <p id="side-info" style="color: #d9534f; font-weight: bold; font-size: 20px;"></p>
+    <p id="theme-info" style="font-size: 18px; font-weight: bold;"></p>
+    <p id="side-info" style="color: #d9534f; font-weight: bold;"></p>
   </div>
 
   <script>
     const myUserId = `user_${Math.random().toString(36).substring(2, 9)}`;
     const bgm = document.getElementById('bgm');
-    const bgmBtn = document.getElementById('toggle-bgm-btn');
-    
-    let isBgmPlaying = false;
-    bgm.volume = 0.3; // 音量を少し小さめ（30%）に設定
+    const bgmBtn = document.getElementById('bgm-btn');
+    bgm.volume = 0.3;
 
-    // BGMの再生試行（ブラウザの自動再生ブロック対策）
-    function initBGM() {
-      if (!isBgmPlaying) {
-        bgm.play().then(() => {
-          isBgmPlaying = true;
-          bgmBtn.innerText = "🎵 BGM: ON";
-        }).catch(err => {
-          console.log("ユーザー操作を待機中:", err);
-        });
+    function playBGM() {
+      if (bgm.paused) {
+        bgm.play().catch(err => console.log("BGM再生待機中:", err));
       }
     }
+    document.body.addEventListener('click', playBGM, { once: true });
 
-    // 画面のどこかを初めてクリックした時にBGMを開始
-    document.addEventListener('click', initBGM, { once: true });
-
-    // BGMのオン / オフ 切り替え
     function toggleBGM() {
       if (bgm.paused) {
         bgm.play();
-        isBgmPlaying = true;
-        bgmBtn.innerText = "🎵 BGM: ON";
+        bgmBtn.innerText = "BGM: ON";
       } else {
         bgm.pause();
-        isBgmPlaying = false;
-        bgmBtn.innerText = "🔇 BGM: OFF";
+        bgmBtn.innerText = "BGM: OFF";
       }
     }
 
-    // マッチング開始処理
     async function startMatching() {
-      initBGM(); // ボタンを押したタイミングでも再生を確定させる
-
+      playBGM();
+      
       const username = document.getElementById('username').value.trim() || '名無し';
       const statusText = document.getElementById('status-text');
       const startBtn = document.getElementById('start-btn');
@@ -148,13 +90,12 @@
         const data = await response.json();
 
         if (data.status === 'SUCCESS') {
-          // マッチング成功時 ➔ 対戦画面を表示
           document.getElementById('lobby-screen').style.display = 'none';
           document.getElementById('battle-screen').style.display = 'block';
 
-          document.getElementById('room-info').innerText = `部屋: ${data.room} (VS ${data.opponent})`;
+          document.getElementById('room-info').innerText = `部屋名: ${data.room} (VS ${data.opponent})`;
           document.getElementById('theme-info').innerText = `お題: ${data.theme}`;
-          document.getElementById('side-info').innerText = `あなたの立場: 【${data.yourSide}】`;
+          document.getElementById('side-info').innerText = `あなたの立論: 【${data.yourSide}】`;
         }
       } catch (error) {
         console.error('Matching Error:', error);
