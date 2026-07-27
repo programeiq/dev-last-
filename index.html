@@ -120,6 +120,25 @@
     .modal-close-btn {
       margin-top: 15px; background: #FF7675; color: white; border: none; padding: 10px; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; text-align: center;
     }
+    .modal-action-btn {
+      margin-top: 10px; background: #00A2FF; color: white; border: none; padding: 12px; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; text-align: center;
+    }
+
+    /* フォーム要素 */
+    .report-select, .report-textarea {
+      width: 100%;
+      padding: 10px;
+      margin-top: 8px;
+      margin-bottom: 15px;
+      border: 2px solid #00A2FF;
+      border-radius: 10px;
+      box-sizing: border-box;
+      font-size: 14px;
+    }
+    .report-textarea {
+      height: 80px;
+      resize: none;
+    }
 
     /* VSマッチング画面 */
     #vs-match-screen { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100vw; height: 100vh; background-color: #00A2FF; }
@@ -158,6 +177,7 @@
     #message-input { flex-grow: 1; padding: 15px; font-size: 16px; border: 3px solid #FFFFFF; border-radius: 15px; outline: none; }
     #send-btn { padding: 15px 30px; font-size: 16px; background-color: #FFD166; color: #333333; border: 3px solid #FFFFFF; border-radius: 15px; cursor: pointer; font-weight: bold; }
     .btn-back { padding: 8px 18px; font-size: 14px; background-color: #FF7675; border-radius: 20px; border: 2px solid #FFFFFF; color: white; font-weight: bold; cursor: pointer;}
+    .btn-report { padding: 8px 18px; font-size: 14px; background-color: #FD9644; border-radius: 20px; border: 2px solid #FFFFFF; color: white; font-weight: bold; cursor: pointer;}
   </style>
 </head>
 <body>
@@ -204,6 +224,29 @@
     </div>
   </div>
 
+  <!-- ポップアップ：通報画面 -->
+  <div id="report-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">通報フォーム</div>
+      <div class="modal-body">
+        <div>対象ユーザー: <b id="report-target-name">未設定</b></div>
+        
+        <label for="report-reason-select" style="font-weight: bold; margin-top: 10px; display: block;">通報理由:</label>
+        <select id="report-reason-select" class="report-select">
+          <option value="不適切なユーザーネーム">不適切なユーザーネーム</option>
+          <option value="誹謗中傷・暴言">暴言・誹謗中傷</option>
+          <option value="スパム・連打">スパム・荒らし行為</option>
+          <option value="その他">その他</option>
+        </select>
+
+        <label for="report-detail-text" style="font-weight: bold; display: block;">詳細内容:</label>
+        <textarea id="report-detail-text" class="report-textarea" placeholder="具体的な理由を入力してください"></textarea>
+      </div>
+      <button class="modal-action-btn" onclick="submitReport()">通報を送信する</button>
+      <button class="modal-close-btn" onclick="closeModal('report-modal')">キャンセル</button>
+    </div>
+  </div>
+
   <!-- ポップアップ：ルール説明画面 -->
   <div id="rule-modal" class="modal-overlay">
     <div class="modal-content">
@@ -221,8 +264,9 @@
 ・または180秒（3分）経過時に相手よりHPが多ければ勝ち！
 
 【注意・禁止事項】
+・不適切なユーザーネームや暴言は通報対象となり、BAN（永久凍結）されます。
 ・1分間（60秒）完全に放置すると放置ペナルティで敗北します。
-・意味のない適当な連打や文字入力キープの放置は警告対象です！（3回警告でアカウントBAN）
+・意味のない適当な連打や文字入力キープの放置は警告対象です！
       </div>
       <button class="modal-close-btn" onclick="closeModal('rule-modal')">閉じる</button>
     </div>
@@ -254,7 +298,10 @@
   <div id="debate-screen">
     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 10px;">
       <div id="room-title" style="font-size: 14px; font-weight: bold; color: #FFFFFF;">部屋名: 接続中...</div>
-      <button class="btn-back" onclick="goBackToMenu(true)">降参して戻る</button>
+      <div>
+        <button class="btn-report" onclick="openReportModal()">通報</button>
+        <button class="btn-back" onclick="goBackToMenu(true)">降参</button>
+      </div>
     </div>
 
     <div id="theme-info">
@@ -306,6 +353,7 @@
 
     let myHP = 2000;
     let enemyHP = 2000; 
+    let currentEnemyName = '';
 
     let kickCount = parseInt(localStorage.getItem('yururon_kick_count')) || 0;
     let isBanned = localStorage.getItem('yururon_is_banned') === 'true';
@@ -332,6 +380,19 @@
       myUsername = prompt('ユーザーネームを入力してください！') || '名無しさん';
       localStorage.setItem('yururon_username', myUsername);
     }
+
+    // BAN判定チェック (サーバー側での検証)
+    function checkBanStatus() {
+      fetch(`${SERVER_URL}/check-ban?username=${encodeURIComponent(myUsername)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.banned) {
+            localStorage.setItem('yururon_is_banned', 'true');
+            isBanned = true;
+          }
+        }).catch(() => {});
+    }
+    checkBanStatus();
 
     const messageInputElem = document.getElementById('message-input');
     
@@ -396,6 +457,7 @@
         myUsername = newName.trim();
         localStorage.setItem('yururon_username', myUsername);
         updateUserDataDisplay();
+        checkBanStatus();
       }
     }
 
@@ -443,6 +505,41 @@
       document.getElementById('rule-modal').style.display = 'flex';
     }
 
+    function openReportModal() {
+      if (!currentEnemyName) {
+        alert("通報対象のユーザーが見つかりません。");
+        return;
+      }
+      document.getElementById('report-target-name').innerText = currentEnemyName;
+      document.getElementById('report-modal').style.display = 'flex';
+    }
+
+    function submitReport() {
+      const reason = document.getElementById('report-reason-select').value;
+      const detail = document.getElementById('report-detail-text').value.trim();
+
+      fetch(`${SERVER_URL}/report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reporter: myUsername,
+          target: currentEnemyName,
+          reason: reason,
+          detail: detail,
+          roomName: myRoomName
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        alert("通報を受け付けました。運営・管理者が確認のうえ適切に対処いたします。");
+        closeModal('report-modal');
+        document.getElementById('report-detail-text').value = '';
+      })
+      .catch(err => {
+        alert("送信に失敗しました。時間をおいて再度お試しください。");
+      });
+    }
+
     function closeModal(modalId) {
       document.getElementById(modalId).style.display = 'none';
     }
@@ -474,7 +571,7 @@
 
     function startMatching() {
       if (isBanned) {
-        alert("あなたのアカウントは不正行為（放置・連打など）によりBANされています。プレイできません。");
+        alert("あなたのアカウントは不正行為または不適切な名称・言動によりBANされています。プレイできません。");
         return;
       }
 
@@ -523,19 +620,18 @@
                   if (matchPollIntervalId) clearInterval(matchPollIntervalId); 
                   hasTriggeredCountdown = true;
                   
-                  const enemyName = hpKeys.find(player => !player.includes(myUsername)) || "対戦相手";
-                  document.getElementById('match-enemy-info-bar').innerText = enemyName;
+                  const enemyFullName = hpKeys.find(player => !player.includes(myUsername)) || "対戦相手";
+                  currentEnemyName = enemyFullName;
+                  document.getElementById('match-enemy-info-bar').innerText = enemyFullName;
                   
-                  // 【立場決めバグ修正】
-                  // お題 (例: "パン派 VS ごはん派") と プレイヤーの順序から前者/後者を判定
                   const themeParts = currentTheme.split(' VS ');
-                  const firstPlayer = hpKeys[0]; // 部屋に入った先着プレイヤー
+                  const firstPlayer = hpKeys[0];
                   
                   if (themeParts.length === 2) {
                     if (firstPlayer.includes(myUsername)) {
-                      myChosenSide = themeParts[0].trim(); // 先着は前者派
+                      myChosenSide = themeParts[0].trim();
                     } else {
-                      myChosenSide = themeParts[1].trim(); // 後着は後者派
+                      myChosenSide = themeParts[1].trim();
                     }
                   } else {
                     myChosenSide = firstPlayer.includes(myUsername) ? '前者派' : '後者派';
@@ -681,7 +777,6 @@
         addExperience(expGained);
       }
 
-      // ランキング更新を送信
       const myUserId = `user_${myUsername}`;
       fetch(`${SERVER_URL}/update-score`, {
         method: 'POST',
@@ -791,6 +886,7 @@
           hpKeys.forEach(player => {
             if (!player.includes(cleanMyName)) { 
               enemyFullNameDisplay = player; 
+              currentEnemyName = player;
               if (hpData[player] !== undefined) {
                 enemyHP = hpData[player];
               }
@@ -812,7 +908,6 @@
           const chatBox = document.getElementById('chat-box');
           chatBox.innerHTML = ''; 
 
-          // 【修復・最適化部分】チャットログの描画を最後まで完結
           messages.forEach(msg => {
             if (!msg.text || msg.text === "") return; 
             const rowElement = document.createElement('div');
