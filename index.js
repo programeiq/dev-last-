@@ -8,7 +8,6 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// 指定されたCORSヘッダーの設定
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
@@ -17,7 +16,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// 静的ファイル（index.htmlなど）の配信設定
+// public フォルダ内の静的ファイル（index.html など）を配信
 app.use(express.static('public'));
 
 // ==========================================
@@ -38,7 +37,6 @@ const TOPICS = [
   "勉強や作業は家派？カフェ派？", "1日だけ誰かになれるなら有名人？身近な人？", "過去に戻ってやり直したいことはある？",
   "未来の自分にメッセージを送るなら何て言う？", "自分を動物に例えると何？", "好きなアニメや漫画のキャラクターは？",
   "子供の頃の夢は何だった？", "最近買ってよかったものは？", "一番落ち着く場所はどこ？", "人生最後の日に食べたいものは？",
-  // --- 51〜100 ---
   "好きな音楽のジャンルは？", "カラオケの十八番はある？", "座右の銘や好きな言葉は？", "自分の長所を一言で言うと？",
   "自分の短所を一言で言うと？", "一番ワクワクする瞬間はいつ？", "ストレス解消法は何？", "行ってみたい国や地域は？",
   "初対面の人と話すのは得意？苦手？", "遅刻しそうな時どう対応する？", "昨日の夕飯何食べた？", "今一番欲しいものは？",
@@ -53,7 +51,6 @@ const TOPICS = [
   "夜景と朝日ならどっちが好き？", "犬の散歩をするなら朝？夕方？", "動物園と水族館ならどっちに行きたい？",
   "博物館と美術館ならどっちが好き？", "映画は吹き替え派？字幕派？", "ライブやフェスに行くのは好き？",
   "自炊派？外食派？", "お弁当を作るなら定番のおかずは？", "コンビニでつい買ってしまうものは？",
-  // --- 101〜150 ---
   "自販機でよく買う飲み物は？", "ファミレスでよく頼むメニューは？", "ハンバーガーチェーンはどこが好き？",
   "牛丼チェーンはどこが好き？", "回転寿司で必ず頼むネタは？", "カフェで頼む定番メニューは？", "居酒屋で最初に頼むメニューは？",
   "お酒は強い方？弱い方？", "お酒を飲むならビール？ハイボール？サワー？", "ソフトドリンクで一番好きなのは？",
@@ -69,7 +66,6 @@ const TOPICS = [
   "焼き芋はねっとり派？ほくほく派？", "みかんの皮はきれいに剥く派？テキトー派？", "りんごは丸かじり派？切って食べる派？",
   "バナナは青めが好き？完熟が好き？", "イチゴには砂糖や牛乳をかける？そのまま？", "好きなフルーツTOP3は？",
   "かき氷で舌が染まるのは気にする？", "屋台でつ買ってしまう食べ物は？", "祭りの雰囲気は好き？", "花火大会は近くで見る？遠くから見る？",
-  // --- 151〜200 ---
   "初詣はおみくじを引く？引かない？", "おみくじの結果は結ぶ？持ち帰る？", "年賀状は送る派？LINEで済ませる派？",
   "大掃除は年末にまとめてする？日頃からする？", "クリスマスケーキはホールで買う？カットで買う？", "サンタクロースをいつまで信じてた？",
   "ハロウィンで仮装したことある？", "エイプリルフールに嘘をついたことある？", "誕生日プレゼントでもらって一番嬉しかったものは？",
@@ -84,7 +80,6 @@ const TOPICS = [
   "人生で一番笑った出来事は？", "最近泣いた出来事は？", "感動して泣いた映画や本は？", "怖い話やホラー映画は好き？苦手？",
   "お化け屋敷に入ったことある？平気？", "絶叫マシンは好き？苦手？", "高所恐怖症？閉所恐怖症？", "虫は平気？苦手？",
   "ヘビやトカゲなどの爬虫類は好き？", "ペットを飼ったことある？", "飼ってみたい動物や生き物は？", "動物と話せるなら何を聞きたい？",
-  // --- 201〜250 ---
   "言葉が理解できるならどの動物と喋りたい？", "水族館で一番長く見ちゃう生き物は？", "植物を育てたことある？",
   "部屋に観葉植物や花を置いている？", "インテリアのテイストで好きなのは？", "自分の部屋のこだわりポイントは？",
   "理想の部屋の間取りは？", "一人暮らし派？実家暮らし派？同居派？", "都会暮らし派？田舎暮らし派？", "景色のいい高層階派？庭付きの1階派？",
@@ -100,7 +95,6 @@ const TOPICS = [
   "決断力はある方？優柔不断な方？", "人と話す時は聞き手？話し手？", "相談されることが多い？相談することが多い？",
   "感情は顔に出やすい？出にくい？", "ポーカーフェイスは得意？", "嘘をつくのは得意？すぐバレる？", "サプライズを仕掛けるのは得意？",
   "人前で発表するのは緊張する？平気？", "大人数のグループと少人数、どっちが居心地いい？", "一人行動（ソロ活）は平気？どこまで行ける？",
-  // --- 251〜300 ---
   "一人カラオケ行ったことある？", "一人焼肉行ったことある？", "一人テーマパーク行ける？", "友達と遊ぶ時は自分が企画する？誘われ待ち？",
   "待ち合わせ時間の何分前に到着する？", "約束の時間に遅刻されたら何分まで待てる？", "連絡は電話派？メッセージ（チャット）派？",
   "長電話は好き？苦手？", "絵を描くのは得意？苦手？", "歌を歌うのは好き？", "ダンスは踊れる？", "楽器を演奏できる？やってみたい楽器は？",
@@ -117,10 +111,112 @@ const TOPICS = [
 ];
 
 // ==========================================
-// 3. APIエンドポイント（完全ランダム選出）
+// 3. マッチング・対戦ルーム管理データ
+// ==========================================
+let waitingPlayers = []; // [{ username, res }]
+let activeRooms = {};    // { roomName: { players, hpData, messages, theme } }
+
+// ==========================================
+// 4. API エンドポイント
 // ==========================================
 
-// ランダムなお題を1つ返すAPI
+// --- マッチング処理 API ---
+app.get('/match', (req, res) => {
+  const username = req.query.username;
+
+  if (!username) {
+    return res.status(400).send('ERR: No username');
+  }
+
+  // 1. すでにアクティブな対戦部屋に所属しているかチェック
+  for (const [roomName, room] of Object.entries(activeRooms)) {
+    if (room.players.includes(username)) {
+      return res.send(`MATCHING_SUCCESS | Room: ${roomName} | Theme: ${room.theme}`);
+    }
+  }
+
+  // 2. 待機キュー内に自分がすでにいれば古い接続を解除（重複登録防止）
+  const existingIndex = waitingPlayers.findIndex(p => p.username === username);
+  if (existingIndex !== -1) {
+    waitingPlayers[existingIndex].res.end();
+    waitingPlayers.splice(existingIndex, 1);
+  }
+
+  // 3. 他に待機中のプレイヤーがいる場合 -> マッチング成立！
+  if (waitingPlayers.length > 0) {
+    const opponent = waitingPlayers.shift();
+    const roomName = `room_${Date.now()}`;
+    
+    // 300個のお題からランダムに1つ選出
+    const randomTheme = TOPICS[Math.floor(Math.random() * TOPICS.length)];
+
+    // 部屋データを初期化
+    activeRooms[roomName] = {
+      players: [opponent.username, username],
+      hpData: {
+        [opponent.username]: 2000,
+        [username]: 2000
+      },
+      messages: [],
+      theme: randomTheme
+    };
+
+    const successMsg = `MATCHING_SUCCESS | Room: ${roomName} | Theme: ${randomTheme}`;
+
+    // 待機していた相手と今回のプレイヤー双方にレスポンス返却
+    opponent.res.send(successMsg);
+    return res.send(successMsg);
+
+  } else {
+    // 4. 他に誰も待機していない場合 -> 待機キューに追加
+    waitingPlayers.push({ username, res });
+
+    // 切断時はキューから削除
+    req.on('close', () => {
+      waitingPlayers = waitingPlayers.filter(p => p.username !== username);
+    });
+  }
+});
+
+// --- メッセージ取得・HP同期 API ---
+app.get('/get-messages', (req, res) => {
+  const roomName = req.query.roomName;
+  if (!roomName || !activeRooms[roomName]) {
+    return res.json({ error: 'Room not found' });
+  }
+  res.json(activeRooms[roomName]);
+});
+
+// --- メッセージ送信 API ---
+app.post('/send-message', (req, res) => {
+  const { roomName, sender, text } = req.body;
+  if (!roomName || !activeRooms[roomName]) {
+    return res.json({ success: false, error: 'Room not found' });
+  }
+
+  const room = activeRooms[roomName];
+  room.messages.push({ sender, text });
+
+  // 相手のHPを100減少
+  const rawSenderName = sender.split(' (')[0];
+  const enemyName = room.players.find(p => p !== rawSenderName);
+  if (enemyName && room.hpData[enemyName] !== undefined) {
+    room.hpData[enemyName] = Math.max(0, room.hpData[enemyName] - 100);
+  }
+
+  res.json({ success: true });
+});
+
+// --- 試合終了・退出 API ---
+app.post('/game-over', (req, res) => {
+  const { roomName } = req.body;
+  if (roomName && activeRooms[roomName]) {
+    delete activeRooms[roomName];
+  }
+  res.json({ success: true });
+});
+
+// --- 単体お題取得 API ---
 app.get('/api/topic', (req, res) => {
   const randomIndex = Math.floor(Math.random() * TOPICS.length);
   res.json({
@@ -130,14 +226,18 @@ app.get('/api/topic', (req, res) => {
   });
 });
 
-// 全お題を一覧取得するAPI（必要であれば）
 app.get('/api/topics', (req, res) => {
   res.json(TOPICS);
 });
 
+// --- BAN・ランキング・通報ダミー API ---
+app.get('/check-ban', (req, res) => { res.json({ banned: false }); });
+app.get('/ranking', (req, res) => { res.send("1位: 名無しさん (Lv.100)\n2位: プレイヤーA (Lv.85)\n3位: プレイヤーB (Lv.70)"); });
+app.post('/report', (req, res) => { res.json({ success: true }); });
+
 // ==========================================
-// 4. サーバー起動
+// 5. サーバー起動
 // ==========================================
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Index.js server running on http://localhost:${PORT}`);
 });
