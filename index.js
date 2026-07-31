@@ -73,7 +73,7 @@ const TOPICS = [
   "ゲームは オンライン対戦派 VS ソロプレイ派", "人狼ゲームは 好き・得意 VS 嫌い・苦手",
   "スポーツは 見る派 VS する派", "AI（人工知能）の進化は 人類にメリット VS 人類に脅威",
   "自動運転車は 今すぐ普及すべき VS まだ危険すぎる", "ベーシックインカム（全全員給付）は 導入すべき VS 反対",
-  "レジの無人化・キャッシュレス化は 推進すべき VS 現金を残すべき", "SNSは 人生を豊かにする VS 人生を狂わせる",
+  "レジの無人化・キャッシュレス化は 推進すべき VS 現現金構造を残すべき", "SNSは 人生を豊かにする VS 人生を狂わせる",
   "紙の教科書 VS タブレット端末での授業", "リモートワーク（在宅勤務） VS 出社して働く",
   "週休3日制は 導入すべき VS 現状の週休2日で良い", "残業は 悪（即刻ゼロにすべき） VS 必要悪（状況による）",
   "制服は 必要（服に悩まない） VS 不要（個性を尊重）", "英語の早期教育は 必要 VS 日本語の習得が先",
@@ -142,19 +142,38 @@ const TOPICS = [
 ];
 
 // ==========================================
-// 3. サーバーデータ（部屋・通報管理）
+// 3. サーバーデータ（部屋・通報・ランキング管理）
 // ==========================================
 let waitingPlayers = []; // [{ username, res }]
 let activeRooms = {};    // { roomName: { players, hpData, messages, theme } }
 
 // 通報・BAN管理
-let reportLogs = [];     // 通報履歴データ [{ reporter, target, reason, roomName, time }]
-let userReportCounts = {}; // 各ユーザーの被通報数 { "ユーザー名": 2 }
-let bannedUsers = new Set(); // BANされたユーザー一覧
+let reportLogs = [];
+let userReportCounts = {};
+let bannedUsers = new Set();
+
+// ランキング・プレイヤー戦績管理データ
+// 構造: { "ユーザー名": { wins: 0, losses: 0, exp: 0, level: 1 } }
+let userStats = {};
 
 function normalizeName(name) {
   if (!name) return "";
   return name.split('(')[0].split('（')[0].trim();
+}
+
+// プレイヤーデータを初期化または取得
+function getOrCreateUserStat(username) {
+  const cleanName = normalizeName(username);
+  if (!userStats[cleanName]) {
+    userStats[cleanName] = {
+      username: cleanName,
+      wins: 0,
+      losses: 0,
+      exp: 0,
+      level: 1
+    };
+  }
+  return userStats[cleanName];
 }
 
 // ==========================================
@@ -179,26 +198,28 @@ app.get('/match', (req, res) => {
     return res.status(400).send('ERR: No username');
   }
 
-  // BANチェック
   if (bannedUsers.has(cleanUsername)) {
     return res.status(403).send('BANNED: あなたのアカウントは停止されています');
   }
 
-  // 1. すでにアクティブな対戦部屋に所属しているかチェック
+  // プレイヤー登録初期化
+  getOrCreateUserStat(cleanUsername);
+
+  // 1. アクティブ部屋所属チェック
   for (const [roomName, room] of Object.entries(activeRooms)) {
     if (room.players.map(p => normalizeName(p)).includes(cleanUsername)) {
       return res.send(`MATCHING_SUCCESS | Room: ${roomName} | Theme: ${room.theme}`);
     }
   }
 
-  // 2. 待機キュー内に自分がすでにいれば古い接続を解除
+  // 2. 重複待機削除
   const existingIndex = waitingPlayers.findIndex(p => normalizeName(p.username) === cleanUsername);
   if (existingIndex !== -1) {
     waitingPlayers[existingIndex].res.end();
     waitingPlayers.splice(existingIndex, 1);
   }
 
-  // 3. 他に待機中のプレイヤーがいる場合 -> マッチング成立！
+  // 3. マッチング成立！
   if (waitingPlayers.length > 0) {
     const opponent = waitingPlayers.shift();
     const roomName = `room_${Date.now()}`;
@@ -222,7 +243,7 @@ app.get('/match', (req, res) => {
     return res.send(successMsg);
 
   } else {
-    // 4. 待機キューに追加
+    // 4. 待機追加
     waitingPlayers.push({ username: cleanUsername, res });
     req.on('close', () => {
       waitingPlayers = waitingPlayers.filter(p => normalizeName(p.username) !== cleanUsername);
@@ -264,10 +285,65 @@ app.post('/send-message', (req, res) => {
   res.json({ success: true, hpData: room.hpData });
 });
 
-// --- 通報 API (ログ記録＆自動BAN機能付き) ---
+// --- 勝敗結果記録 API (ランキング更新用) ---
+app.post('/record-result', (req, res) => {
+  const { winner, loser } = req.body;
+
+  if (winner) {
+    const winnerStat = getOrCreateUserStat(winner);
+    winnerStat.wins += 1;
+    winnerStat.exp += 100; // 勝利で100EXP
+    winnerStat.level = Math.floor(winnerStat.exp / 200) + 1; // 200EXPごとにLv1アップ
+  }
+
+  if (loser) {
+    const loserStat = getOrCreateUserStat(loser);
+    loserStat.losses += 1;
+    loserStat.exp += 30; // 敗北でも30EXP獲得
+    loserStat.level = Math.floor(loserStat.exp / 200) + 1;
+  }
+
+  res.json({ success: true, userStats });
+});
+
+// --- 本格ランキング API（JSONデータ＆テキスト形式両対応） ---
+app.get('/ranking', (req, res) => {
+  // 勝利数 ＞ レベル ＞ EXP 順でソート
+  const sortedList = Object.values(userStats).sort((a, b) => {
+    if (b.wins !== a.wins) return b.wins - a.wins;
+    if (b.level !== a.level) return b.level - a.level;
+    return b.exp - a.exp;
+  });
+
+  // リクエストがJSONを求めている場合はJSON返却
+  if (req.headers.accept && req.headers.accept.includes('application/json')) {
+    return res.json({
+      ranking: sortedList.slice(0, 50) // TOP 50
+    });
+  }
+
+  // テキスト形式での整形表示（旧来のクライアント互換）
+  if (sortedList.length === 0) {
+    return res.send("まだ対戦記録がありません。最初の勝利者になろう！");
+  }
+
+  let resultText = "【🏆 ディベート対戦ランキング TOP10 🏆】\n\n";
+  sortedList.slice(0, 10).forEach((user, index) => {
+    const rank = index + 1;
+    const winRate = (user.wins + user.losses) > 0 
+      ? Math.round((user.wins / (user.wins + user.losses)) * 100) 
+      : 0;
+    
+    resultText += `${rank}位: ${user.username} (Lv.${user.level})\n`;
+    resultText += `   勝利: ${user.wins}勝 ${user.losses}敗 (勝率: ${winRate}%)\n\n`;
+  });
+
+  res.send(resultText);
+});
+
+// --- 通報 API ---
 app.post('/report', (req, res) => {
   const { reporter, target, reason, roomName } = req.body;
-
   const cleanReporter = normalizeName(reporter);
   const cleanTarget = normalizeName(target);
 
@@ -275,34 +351,26 @@ app.post('/report', (req, res) => {
     return res.json({ success: false, message: '通報対象が見つかりません' });
   }
 
-  // 1. 通報ログを保存
   const reportEntry = {
     reporter: cleanReporter,
     target: cleanTarget,
     reason: reason || '不適切な発言',
     roomName: roomName || '不明',
     timestamp: new Date().toISOString(),
-    // 該当の部屋が存在する場合は、その部屋のチャットログも保存する
     chatHistory: activeRooms[roomName] ? [...activeRooms[roomName].messages] : []
   };
   reportLogs.push(reportEntry);
 
-  // コンソールに通報内容を出力（開発・管理用確認用）
-  console.log(`[通報発生] 通報者: ${cleanReporter} -> 被通報者: ${cleanTarget} (理由: ${reason})`);
-
-  // 2. 被通報数をカウント
   userReportCounts[cleanTarget] = (userReportCounts[cleanTarget] || 0) + 1;
 
-  // 3. 通報が3回以上溜まったら自動BAN処理
   if (userReportCounts[cleanTarget] >= 3) {
     bannedUsers.add(cleanTarget);
-    console.warn(`[自動BAN適用] ${cleanTarget} は通報累計3回に達したためBANされました。`);
   }
 
   res.json({ success: true, message: '通報を受け付けました。調査を実施します。' });
 });
 
-// --- 管理者用：通報ログ確認 API ---
+// --- 管理者画面 ---
 app.get('/admin/reports', (req, res) => {
   res.json({
     totalReports: reportLogs.length,
@@ -321,7 +389,7 @@ app.post('/game-over', (req, res) => {
   res.json({ success: true });
 });
 
-// --- 単体お題取得 API ---
+// --- お題取得 API ---
 app.get('/api/topic', (req, res) => {
   const randomIndex = Math.floor(Math.random() * TOPICS.length);
   res.json({
@@ -333,10 +401,6 @@ app.get('/api/topic', (req, res) => {
 
 app.get('/api/topics', (req, res) => {
   res.json(TOPICS);
-});
-
-app.get('/ranking', (req, res) => {
-  res.send("1位: 名無しさん (Lv.100)\n2位: プレイヤーA (Lv.85)\n3位: プレイヤーB (Lv.70)");
 });
 
 // ==========================================
