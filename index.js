@@ -144,16 +144,13 @@ const TOPICS = [
 // ==========================================
 // 3. サーバーデータ（部屋・通報・ランキング管理）
 // ==========================================
-let waitingPlayers = []; // [{ username, res }]
-let activeRooms = {};    // { roomName: { players, hpData, messages, theme } }
+let waitingPlayers = []; 
+let activeRooms = {};    
 
-// 通報・BAN管理
 let reportLogs = [];
 let userReportCounts = {};
 let bannedUsers = new Set();
 
-// ランキング・プレイヤー戦績管理データ
-// 構造: { "ユーザー名": { wins: 0, losses: 0, exp: 0, level: 1 } }
 let userStats = {};
 
 function normalizeName(name) {
@@ -161,9 +158,9 @@ function normalizeName(name) {
   return name.split('(')[0].split('（')[0].trim();
 }
 
-// プレイヤーデータを初期化または取得
 function getOrCreateUserStat(username) {
   const cleanName = normalizeName(username);
+  if (!cleanName) return null;
   if (!userStats[cleanName]) {
     userStats[cleanName] = {
       username: cleanName,
@@ -176,11 +173,31 @@ function getOrCreateUserStat(username) {
   return userStats[cleanName];
 }
 
+// 勝敗記録関数
+function recordBattleResult(winnerName, loserName) {
+  if (winnerName) {
+    const winner = getOrCreateUserStat(winnerName);
+    if (winner) {
+      winner.wins += 1;
+      winner.exp += 100;
+      winner.level = Math.floor(winner.exp / 200) + 1;
+    }
+  }
+  if (loserName) {
+    const loser = getOrCreateUserStat(loserName);
+    if (loser) {
+      loser.losses += 1;
+      loser.exp += 30;
+      loser.level = Math.floor(loser.exp / 200) + 1;
+    }
+  }
+}
+
 // ==========================================
 // 4. API エンドポイント
 // ==========================================
 
-// --- BANチェック API ---
+// BANチェック API
 app.get('/check-ban', (req, res) => {
   const username = normalizeName(req.query.username);
   if (bannedUsers.has(username)) {
@@ -189,7 +206,7 @@ app.get('/check-ban', (req, res) => {
   res.json({ banned: false });
 });
 
-// --- マッチングAPI ---
+// マッチングAPI
 app.get('/match', (req, res) => {
   const username = req.query.username ? req.query.username.trim() : "";
   const cleanUsername = normalizeName(username);
@@ -202,24 +219,20 @@ app.get('/match', (req, res) => {
     return res.status(403).send('BANNED: あなたのアカウントは停止されています');
   }
 
-  // プレイヤー登録初期化
   getOrCreateUserStat(cleanUsername);
 
-  // 1. アクティブ部屋所属チェック
   for (const [roomName, room] of Object.entries(activeRooms)) {
     if (room.players.map(p => normalizeName(p)).includes(cleanUsername)) {
       return res.send(`MATCHING_SUCCESS | Room: ${roomName} | Theme: ${room.theme}`);
     }
   }
 
-  // 2. 重複待機削除
   const existingIndex = waitingPlayers.findIndex(p => normalizeName(p.username) === cleanUsername);
   if (existingIndex !== -1) {
     waitingPlayers[existingIndex].res.end();
     waitingPlayers.splice(existingIndex, 1);
   }
 
-  // 3. マッチング成立！
   if (waitingPlayers.length > 0) {
     const opponent = waitingPlayers.shift();
     const roomName = `room_${Date.now()}`;
@@ -235,7 +248,8 @@ app.get('/match', (req, res) => {
         [player2Name]: 2000
       },
       messages: [],
-      theme: randomTheme
+      theme: randomTheme,
+      isFinished: false
     };
 
     const successMsg = `MATCHING_SUCCESS | Room: ${roomName} | Theme: ${randomTheme}`;
@@ -243,7 +257,6 @@ app.get('/match', (req, res) => {
     return res.send(successMsg);
 
   } else {
-    // 4. 待機追加
     waitingPlayers.push({ username: cleanUsername, res });
     req.on('close', () => {
       waitingPlayers = waitingPlayers.filter(p => normalizeName(p.username) !== cleanUsername);
@@ -251,7 +264,7 @@ app.get('/match', (req, res) => {
   }
 });
 
-// --- メッセージ取得 API ---
+// メッセージ取得 API
 app.get('/get-messages', (req, res) => {
   const roomName = req.query.roomName;
   if (!roomName || !activeRooms[roomName]) {
@@ -260,9 +273,9 @@ app.get('/get-messages', (req, res) => {
   res.json(activeRooms[roomName]);
 });
 
-// --- メッセージ送信 API ---
+// メッセージ送信 API（HPバグ修正 & 勝敗自動記録版）
 app.post('/send-message', (req, res) => {
-  const { roomName, sender, text } = req.body;
+  const { roomName, sender, text, damage } = req.body;
   if (!roomName || !activeRooms[roomName]) {
     return res.json({ success: false, error: 'Room not found' });
   }
@@ -276,53 +289,45 @@ app.post('/send-message', (req, res) => {
 
   room.messages.push({ sender, text });
 
-  // 相手のHPを100減らす
+  // ダメージ計算（指定がなければデフォルト100、負の値防止）
+  const dmg = (typeof damage === 'number' && damage > 0) ? damage : 100;
   const enemyName = room.players.find(p => normalizeName(p) !== senderName);
-  if (enemyName && room.hpData[enemyName] !== undefined) {
-    room.hpData[enemyName] = Math.max(0, room.hpData[enemyName] - 100);
+
+  if (enemyName && room.hpData[enemyName] !== undefined && !room.isFinished) {
+    // 0未満にならないようMath.maxで保護
+    room.hpData[enemyName] = Math.max(0, room.hpData[enemyName] - dmg);
+
+    // HPが0になった場合、自動的に決着をつけてランキングに記録
+    if (room.hpData[enemyName] === 0) {
+      room.isFinished = true;
+      recordBattleResult(senderName, enemyName);
+    }
   }
 
-  res.json({ success: true, hpData: room.hpData });
+  res.json({ success: true, hpData: room.hpData, isFinished: room.isFinished });
 });
 
-// --- 勝敗結果記録 API (ランキング更新用) ---
+// 勝敗結果手動記録 API（クライアント側からの通知用）
 app.post('/record-result', (req, res) => {
   const { winner, loser } = req.body;
-
-  if (winner) {
-    const winnerStat = getOrCreateUserStat(winner);
-    winnerStat.wins += 1;
-    winnerStat.exp += 100; // 勝利で100EXP
-    winnerStat.level = Math.floor(winnerStat.exp / 200) + 1; // 200EXPごとにLv1アップ
-  }
-
-  if (loser) {
-    const loserStat = getOrCreateUserStat(loser);
-    loserStat.losses += 1;
-    loserStat.exp += 30; // 敗北でも30EXP獲得
-    loserStat.level = Math.floor(loserStat.exp / 200) + 1;
-  }
-
+  recordBattleResult(winner, loser);
   res.json({ success: true, userStats });
 });
 
-// --- 本格ランキング API（JSONデータ＆テキスト形式両対応） ---
+// 本格ランキング API
 app.get('/ranking', (req, res) => {
-  // 勝利数 ＞ レベル ＞ EXP 順でソート
   const sortedList = Object.values(userStats).sort((a, b) => {
     if (b.wins !== a.wins) return b.wins - a.wins;
     if (b.level !== a.level) return b.level - a.level;
     return b.exp - a.exp;
   });
 
-  // リクエストがJSONを求めている場合はJSON返却
   if (req.headers.accept && req.headers.accept.includes('application/json')) {
     return res.json({
-      ranking: sortedList.slice(0, 50) // TOP 50
+      ranking: sortedList.slice(0, 50)
     });
   }
 
-  // テキスト形式での整形表示（旧来のクライアント互換）
   if (sortedList.length === 0) {
     return res.send("まだ対戦記録がありません。最初の勝利者になろう！");
   }
@@ -341,7 +346,7 @@ app.get('/ranking', (req, res) => {
   res.send(resultText);
 });
 
-// --- 通報 API ---
+// 通報 API
 app.post('/report', (req, res) => {
   const { reporter, target, reason, roomName } = req.body;
   const cleanReporter = normalizeName(reporter);
@@ -370,7 +375,7 @@ app.post('/report', (req, res) => {
   res.json({ success: true, message: '通報を受け付けました。調査を実施します。' });
 });
 
-// --- 管理者画面 ---
+// 管理者画面 API
 app.get('/admin/reports', (req, res) => {
   res.json({
     totalReports: reportLogs.length,
@@ -380,7 +385,7 @@ app.get('/admin/reports', (req, res) => {
   });
 });
 
-// --- 試合終了 API ---
+// 試合終了 API
 app.post('/game-over', (req, res) => {
   const { roomName } = req.body;
   if (roomName && activeRooms[roomName]) {
@@ -389,7 +394,7 @@ app.post('/game-over', (req, res) => {
   res.json({ success: true });
 });
 
-// --- お題取得 API ---
+// お題取得 API
 app.get('/api/topic', (req, res) => {
   const randomIndex = Math.floor(Math.random() * TOPICS.length);
   res.json({
