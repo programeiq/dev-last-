@@ -6,7 +6,7 @@
   <title>ゆるろん</title>
   <style>
     body {
-      background-color: #00A2FF;
+      background-color: #31A87B;
       color: #333333;
       font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
       display: flex;
@@ -41,8 +41,8 @@
       background: rgba(255, 255, 255, 0.2);
       padding: 10px 20px;
       border-radius: 50px;
-      border: 2px solid #FFFFFF;
-      color: #FFFFFF;
+      border: 2px solid #7AD6B8;
+      color: #7AD6B8;
     }
 
     #user-icon-slot {
@@ -61,13 +61,13 @@
     }
     #user-icon-slot:hover { transform: scale(1.05); }
     #custom-icon-img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    #fallback-text { font-size: 11px; font-weight: bold; color: #00A2FF; text-align: center; line-height: 1.2; }
+    #fallback-text { font-size: 11px; font-weight: bold; color: #31A07B; text-align: center; line-height: 1.2; }
     #icon-file-input { display: none; }
 
     #user-info-text { display: flex; flex-direction: column; }
     #game-title { font-size: 22px; font-weight: bold; margin: 0; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
     #user-badge { font-size: 13px; font-weight: bold; opacity: 0.9; }
-    #icon-item-label { font-size: 11px; background: #FFFFFF; color: #00A2FF; padding: 2px 8px; border-radius: 10px; font-weight: bold; margin-top: 4px; width: fit-content; cursor: pointer; }
+    #icon-item-label { font-size: 11px; background: #FFFFFF; color: #31A07B; padding: 2px 8px; border-radius: 10px; font-weight: bold; margin-top: 4px; width: fit-content; cursor: pointer; }
 
     .right-menu-container { position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column; gap: 12px; z-index: 10; }
 
@@ -75,12 +75,12 @@
       width: 70px; height: 70px; border-radius: 50%; border: 3px solid #FFFFFF; font-weight: bold; font-size: 13px; cursor: pointer; transition: all 0.1s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.15); outline: none; display: flex; align-items: center; justify-content: center;
     }
     .side-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 8px rgba(0,0,0,0.2); }
-    .btn-settings { background-color: #FF7675; color: white; }
-    .btn-ranking { background-color: #FFF385; color: #333333; border-color: #333333; }
-    .btn-rule { background-color: #A29BFE; color: white; }
+    .btn-settings { background-color: #7ad6b8; color: white; }
+    .btn-ranking { background-color: #7ad6b8; color: #333333; border-color: #333333; }
+    .btn-rule { background-color: #7ad6b8; color: white; }
 
     #vs-logo-container { flex: 1; display: flex; align-items: center; justify-content: center; margin-top: 40px; }
-    .vs-bubble { position: relative; width: 180px; height: 180px; background: #FFFFFF; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 70px; font-weight: 900; color: #00A2FF; box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
+    .vs-bubble { position: relative; width: 180px; height: 180px; background: #FFFFFF; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 70px; font-weight: 900; color: #1f654e; box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
 
     #display-box { background: rgba(255, 255, 255, 0.9); border: 2px solid #FFFFFF; border-radius: 15px; padding: 15px 30px; font-size: 18px; font-weight: bold; text-align: center; white-space: pre-wrap; box-shadow: 0 6px 15px rgba(0,0,0,0.1); width: 60%; margin-bottom: 20px; }
 
@@ -112,7 +112,7 @@
       position: relative;
     }
     .modal-header {
-      font-size: 22px; font-weight: bold; color: #00A2FF; text-align: center; margin-bottom: 15px; border-bottom: 2px solid #00A2FF; padding-bottom: 8px;
+      font-size: 22px; font-weight: bold; color: #31A07B; text-align: center; margin-bottom: 15px; border-bottom: 2px solid #31A07B; padding-bottom: 8px;
     }
     .modal-body {
       overflow-y: auto; flex-grow: 1; font-size: 15px; line-height: 1.6; color: #444; white-space: pre-wrap;
@@ -121,7 +121,7 @@
       margin-top: 15px; background: #FF7675; color: white; border: none; padding: 10px; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; text-align: center;
     }
     .modal-action-btn {
-      margin-top: 10px; background: #00A2FF; color: white; border: none; padding: 12px; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; text-align: center;
+      margin-top: 10px; background: #31A07B; color: white; border: none; padding: 12px; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; text-align: center;
     }
 
     /* フォーム要素 */
@@ -130,7 +130,7 @@
       padding: 10px;
       margin-top: 8px;
       margin-bottom: 15px;
-      border: 2px solid #00A2FF;
+      border: 2px solid #31A07B;
       border-radius: 10px;
       box-sizing: border-box;
       font-size: 14px;
@@ -141,7 +141,7 @@
     }
 
     /* VSマッチング画面 */
-    #vs-match-screen { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100vw; height: 100vh; background-color: #00A2FF; }
+    #vs-match-screen { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100vw; height: 100vh; background-color: #31A07B; }
     .vs-match-box { background-color: #A0A0A0; border: 6px solid #FFFFFF; border-radius: 20px; width: 90%; max-width: 800px; padding: 40px 20px; display: flex; justify-content: space-around; align-items: center; box-shadow: 0 15px 30px rgba(0,0,0,0.3); position: relative; box-sizing: border-box; }
     #match-countdown-banner { position: absolute; top: -60px; background-color: #FF7675; color: white; padding: 10px 30px; border-radius: 30px; font-size: 22px; font-weight: bold; border: 3px solid #FFFFFF; box-shadow: 0 5px 15px rgba(0,0,0,0.2); white-space: nowrap; }
     .match-player-slot { display: flex; flex-direction: column; align-items: center; width: 40%; }
@@ -152,7 +152,7 @@
     .match-center-vs { font-size: 60px; font-weight: 900; color: #FFF385; text-shadow: 4px 4px 0px #333; font-style: italic; }
 
     /* バトル画面 */
-    #debate-screen { display: none; flex-direction: column; align-items: center; width: 95%; max-width: 700px; height: 85vh; border: 4px solid #FFFFFF; border-radius: 25px; background-color: #54A0FF; padding: 20px; box-shadow: 0 12px 24px rgba(0,0,0,0.15); box-sizing: border-box; }
+    #debate-screen { display: none; flex-direction: column; align-items: center; width: 95%; max-width: 700px; height: 85vh; border: 4px solid #FFFFFF; border-radius: 25px; background-color: #0d2b21; padding: 20px; box-shadow: 0 12px 24px rgba(0,0,0,0.15); box-sizing: border-box; }
     #theme-info { width: 100%; background-color: #FF7675; border: 3px solid #FFFFFF; border-radius: 15px; padding: 12px; text-align: center; color: white; font-weight: bold; margin-bottom: 10px; box-sizing: border-box; }
     #timer-panel { width: 100%; display: flex; justify-content: space-between; margin-bottom: 10px; gap: 10px; }
     .time-sub-box { flex: 1; text-align: center; font-size: 14px; font-weight: bold; padding: 8px; border-radius: 10px; border: 2px solid #FFFFFF; transition: background-color 0.2s; }
@@ -160,7 +160,14 @@
     #response-timer-box { background-color: #1DD1A1; color: white; }
 
     #hp-container { width: 100%; background-color: rgba(0,0,0,0.2); border: 2px solid #FFFFFF; border-radius: 15px; padding: 12px; margin-bottom: 15px; box-sizing: border-box; color: white; font-size: 14px; font-weight: bold; }
-    .hp-bar-bg { width: 100%; background-color: #FFF; height: 18px; border-radius: 9px; overflow: hidden; margin-top: 5px; }
+    .hp-bar-bg { 
+        width: 100%; 
+        background-color: #FFF; 
+        height: 18px;
+        border-radius: 9px; 
+        overflow: hidden; 
+        margin-top: 5px; 
+    }
     .hp-bar-fill { height: 100%; background-color: #1DD1A1; width: 100%; transition: width 0.3s ease; }
 
     #chat-box { width: 100%; flex-grow: 1; overflow-y: auto; margin-bottom: 15px; padding: 15px; box-sizing: border-box; display: flex; flex-direction: column; background: rgba(255,255,255,0.9); border-radius: 20px; }
@@ -335,7 +342,7 @@
   </div>
 
   <script>
-    const SERVER_URL = 'https://dev-last-production.up.railway.app';
+    const SERVER_URL = 'https://game-server-production-b1e3.up.railway.app';
     
     let myRoomName = '';
     let lastMessageCount = 0; 
@@ -355,7 +362,6 @@
     let enemyHP = 2000; 
     let currentEnemyName = '';
 
-    let kickCount = parseInt(localStorage.getItem('yururon_kick_count')) || 0;
     let isBanned = localStorage.getItem('yururon_is_banned') === 'true';
     let lastActionTime = Date.now(); 
     let lastInputValue = "";
@@ -414,6 +420,12 @@
         isTyping = false;
         document.getElementById('response-timer-box').innerText = "毎秒 -1 HP";
         document.getElementById('response-timer-box').style.backgroundColor = "#1DD1A1";
+      }
+    });
+
+    messageInputElem.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        sendMessage();
       }
     });
 
@@ -751,190 +763,128 @@
           return;
         }
 
+        document.getElementById('game-timer-box').innerText = `試合残り: ${remainingTime}秒`;
+
         if (remainingTime <= 0) {
           if (myHP > enemyHP) {
-            endGame(`タイムアップ！判定勝ち！（あなた:${myHP} VS 相手:${enemyHP}）`, 50);
+            endGame(`時間切れ勝利！ (自分:${myHP} HP vs 相手:${enemyHP} HP)`, 100);
           } else if (myHP < enemyHP) {
-            endGame(`タイムアップ！判定負け...（あなた:${myHP} VS 相手:${enemyHP}）`, 20);
+            endGame(`時間切れ敗北... (自分:${myHP} HP vs 相手:${enemyHP} HP)`, 30);
           } else {
-            endGame(`タイムアップ！引き分け！（同点:${myHP}）`, 20);
+            endGame(`引き分け！ (双方:${myHP} HP)`, 50);
           }
-        } else {
-          document.getElementById('game-timer-box').innerText = `試合残り: ${remainingTime}秒`;
         }
       }, 1000);
-    }
-
-    function endGame(resultMessage, expGained) {
-      if (isGameOverFlag) return;
-      isGameOverFlag = true;
-      clearAllTimers();
-
-      document.getElementById('message-input').disabled = true;
-      document.getElementById('send-btn').disabled = true;
-
-      if (expGained > 0) {
-        addExperience(expGained);
-      }
-
-      const myUserId = `user_${myUsername}`;
-      fetch(`${SERVER_URL}/update-score`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: myUserId,
-          name: myUsername,
-          level: myLevel,
-          exp: myExp,
-          label: currentLabel
-        })
-      }).catch(() => {});
-
-      alert(`【対戦終了】\n${resultMessage}\n獲得経験値: +${expGained} EXP`);
-      goBackToMenu(true);
-    }
-
-    function triggerPenalty(reasonMessage) {
-      kickCount++;
-      localStorage.setItem('yururon_kick_count', kickCount);
-
-      if (kickCount >= 3) {
-        localStorage.setItem('yururon_is_banned', 'true');
-        isBanned = true;
-        alert(`【BAN処罰】不正・放置行為が3回検知されました。あなたのアカウントをBANします。`);
-        goBackToMenu(true);
-      } else {
-        alert(`${reasonMessage}\n（警告 ${kickCount}/3 回）※3回でBANになります！`);
-      }
-    }
-
-    function isSpamMessage(text) {
-      const cleanText = text.toLowerCase().trim();
-      if (/abcdef|bcdefg|cdefgh|defghi|efghij|fghijk|ghijkl|asdfgh|zxcvbn/.test(cleanText)) return true;
-      if (/(.)\1{4,}/.test(cleanText)) return true;
-      if (/^[a-z0-9]{8,}$/.test(cleanText) && !/^(ok|hello|google|yahoo|yururon)$/.test(cleanText)) return true;
-      return false;
-    }
-
-    function sendMessage() {
-      const input = document.getElementById('message-input');
-      const text = input.value.trim();
-      if (!text || !myRoomName || remainingTime <= 0 || isGameOverFlag) return; 
-
-      lastActionTime = Date.now(); 
-
-      if (isSpamMessage(text)) {
-        triggerPenalty("「意味のない文字連打」は禁止です！");
-        input.value = '';
-        return;
-      }
-
-      enemyHP = Math.max(0, enemyHP - 100);
-
-      let fullProfileName = `${myUsername} [${myChosenSide}]`;
-
-      fetch(`${SERVER_URL}/send-message`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          roomName: myRoomName, 
-          sender: fullProfileName, 
-          text: text,
-          hp: myHP 
-        })
-      });
-
-      input.value = '';
-      isTyping = false; 
-      document.getElementById('response-timer-box').innerText = "毎秒 -1 HP";
-      document.getElementById('response-timer-box').style.backgroundColor = "#1DD1A1";
-      input.blur();
-
-      if (enemyHP <= 0) {
-        endGame("勝利！相手のHPを削りきりました！", 50);
-      }
     }
 
     function updateChatLog() {
       if (!myRoomName || isGameOverFlag) return;
 
       fetch(`${SERVER_URL}/get-messages?roomName=${myRoomName}`)
-        .then(response => response.json())
+        .then(res => res.json())
         .then(data => {
-          if (data.error || !data.hpData) {
-            if (isMatchEstablished) {
-              alert("相手が退出またはキックされたため、部屋を出ます。");
-              goBackToMenu(false);
-            }
+          if (data.error) {
+            endGame("対戦相手が退出または切断しました。勝利です！", 100);
             return;
           }
 
-          const messages = data.messages || [];
-          const hpData = data.hpData || {};
-          const hpKeys = Object.keys(hpData);
+          if (data.hpData) {
+            const enemyKey = Object.keys(data.hpData).find(p => !p.includes(myUsername));
+            if (enemyKey) {
+              enemyHP = data.hpData[enemyKey];
+              let enemyHPPercent = (enemyHP / 2000) * 100;
+              document.getElementById('enemy-hp-label').innerText = `${currentEnemyName}: ${enemyHP}/2000`;
+              document.getElementById('enemy-hp-bar').style.width = `${enemyHPPercent}%`;
 
-          const cleanMyName = myUsername.trim();
-          const hasEnemy = hpKeys.some(player => !player.includes(cleanMyName));
-
-          if (isMatchEstablished && !hasEnemy) {
-            alert("相手が退出またはキックされたため、部屋を出ます。");
-            goBackToMenu(false);
-            return;
-          }
-
-          let enemyFullNameDisplay = "相手";
-          hpKeys.forEach(player => {
-            if (!player.includes(cleanMyName)) { 
-              enemyFullNameDisplay = player; 
-              currentEnemyName = player;
-              if (hpData[player] !== undefined) {
-                enemyHP = hpData[player];
+              if (enemyHP <= 0) {
+                endGame("相手のHPを削り切りました！見事な論破勝利です！", 100);
+                return;
               }
             }
-          });
-
-          let enemyHPPercent = Math.max(0, (enemyHP / 2000) * 100);
-          document.getElementById('enemy-hp-label').innerText = `${enemyFullNameDisplay}: ${enemyHP}/2000`;
-          document.getElementById('enemy-hp-bar').style.width = `${enemyHPPercent}%`;
-
-          if (enemyHP <= 0) {
-            endGame("勝利！相手のHPが0になりました！", 50);
-            return;
           }
 
-          if (messages.length === lastMessageCount) return;
-          lastMessageCount = messages.length;
-          
-          const chatBox = document.getElementById('chat-box');
-          chatBox.innerHTML = ''; 
+          if (data.messages && data.messages.length > lastMessageCount) {
+            const chatBox = document.getElementById('chat-box');
+            for (let i = lastMessageCount; i < data.messages.length; i++) {
+              const msg = data.messages[i];
+              const isMe = msg.sender.includes(myUsername);
 
-          messages.forEach(msg => {
-            if (!msg.text || msg.text === "") return; 
-            const rowElement = document.createElement('div');
-            rowElement.classList.add('message-row');
-            
-            if (msg.sender.includes(cleanMyName)) { 
-              rowElement.classList.add('my-message'); 
-            } else { 
-              rowElement.classList.add('other-message'); 
+              const row = document.createElement('div');
+              row.className = `message-row ${isMe ? 'my-message' : 'other-message'}`;
+
+              const nameDiv = document.createElement('div');
+              nameDiv.className = 'sender-name';
+              nameDiv.innerText = msg.sender;
+
+              const bubbleDiv = document.createElement('div');
+              bubbleDiv.className = 'bubble';
+              bubbleDiv.innerText = msg.text;
+
+              row.appendChild(nameDiv);
+              row.appendChild(bubbleDiv);
+              chatBox.appendChild(row);
             }
-
-            const nameElement = document.createElement('div');
-            nameElement.classList.add('sender-name');
-            nameElement.innerText = msg.sender;
-
-            const bubbleElement = document.createElement('div');
-            bubbleElement.classList.add('bubble');
-            bubbleElement.innerText = msg.text;
-
-            rowElement.appendChild(nameElement);
-            rowElement.appendChild(bubbleElement);
-            chatBox.appendChild(rowElement);
-          });
-
-          chatBox.scrollTop = chatBox.scrollHeight;
+            lastMessageCount = data.messages.length;
+            chatBox.scrollTop = chatBox.scrollHeight;
+          }
         })
-        .catch(err => console.error("ログ更新エラー:", err));
+        .catch(err => console.error("メッセージ取得エラー:", err));
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('message-input');
+      const text = input.value.trim();
+
+      if (!text || isGameOverFlag) return;
+
+      lastActionTime = Date.now();
+      isTyping = false;
+
+      fetch(`${SERVER_URL}/send-message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomName: myRoomName,
+          sender: `${myUsername} (${myChosenSide})`,
+          text: text
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          input.value = '';
+          updateChatLog();
+        }
+      })
+      .catch(err => alert("送信失敗: サーバーと通信できませんでした"));
+    }
+
+    function triggerPenalty(reason) {
+      alert(`警告: ${reason}`);
+    }
+
+    function endGame(resultMessage, expReward) {
+      if (isGameOverFlag) return;
+      isGameOverFlag = true;
+
+      clearAllTimers();
+
+      document.getElementById('message-input').disabled = true;
+      document.getElementById('send-btn').disabled = true;
+
+      alert(`【試合終了】\n${resultMessage}\n獲得EXP: +${expReward}`);
+
+      if (expReward > 0) {
+        addExperience(expReward);
+      }
+
+      fetch(`${SERVER_URL}/game-over`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomName: myRoomName })
+      }).catch(() => {});
+
+      goBackToMenu(false);
     }
   </script>
 </body>
