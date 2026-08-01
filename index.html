@@ -141,7 +141,7 @@
     }
 
     /* VSマッチング画面 */
-    #vs-match-screen { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100vw; height: 100vh; background-color: #31A07B; }
+    #vs-match-screen { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100vw; height: 100vh; background-color: #31A87B; }
     .vs-match-box { background-color: #A0A0A0; border: 6px solid #FFFFFF; border-radius: 20px; width: 90%; max-width: 800px; padding: 40px 20px; display: flex; justify-content: space-around; align-items: center; box-shadow: 0 15px 30px rgba(0,0,0,0.3); position: relative; box-sizing: border-box; }
     #match-countdown-banner { position: absolute; top: -60px; background-color: #FF7675; color: white; padding: 10px 30px; border-radius: 30px; font-size: 22px; font-weight: bold; border: 3px solid #FFFFFF; box-shadow: 0 5px 15px rgba(0,0,0,0.2); white-space: nowrap; }
     .match-player-slot { display: flex; flex-direction: column; align-items: center; width: 40%; }
@@ -344,67 +344,37 @@
   <script>
     const SERVER_URL = 'https://game-server-production-b1e3.up.railway.app/';
 
-    /* --- BGMシステム（Web Audio APIによる自動再生制限回避型） --- */
-    let audioCtx = null;
-    let bgmIntervalId = null;
+    /* --- 外部BGM再生システム --- */
+    // 自由に差し替え可能な外部音声ファイルのURLを設定
+    const BGM_URLS = {
+      menu: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3',   // メニュー用ゆったりBGM
+      battle: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3' // バトル用アップテンポBGM
+    };
 
-    function initAudio() {
-      if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
-    }
+    const bgmAudio = new Audio();
+    bgmAudio.loop = true;
+    bgmAudio.volume = 0.2; // 音量（0.0 〜 1.0）
+    let currentBgmType = null;
 
-    function playNote(freq, type, duration, timeOffset, vol = 0.05) {
-      if (!audioCtx) return;
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = type;
-      osc.frequency.setValueAtTime(freq, audioCtx.currentTime + timeOffset);
-      gain.gain.setValueAtTime(vol, audioCtx.currentTime + timeOffset);
-      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + timeOffset + duration);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start(audioCtx.currentTime + timeOffset);
-      osc.stop(audioCtx.currentTime + timeOffset + duration);
-    }
-
-    function startBGM(type) {
-      initAudio();
-      stopBGM();
-
-      if (type === 'menu') {
-        const notes = [261.63, 329.63, 392.00, 523.25, 392.00, 329.63];
-        let step = 0;
-        bgmIntervalId = setInterval(() => {
-          playNote(notes[step % notes.length], 'sine', 0.4, 0, 0.04);
-          step++;
-        }, 500);
-      } else if (type === 'battle') {
-        const battleNotes = [174.61, 220.00, 261.63, 329.63, 261.63, 220.00];
-        let step = 0;
-        bgmIntervalId = setInterval(() => {
-          playNote(battleNotes[step % battleNotes.length], 'triangle', 0.2, 0, 0.06);
-          playNote(110.00, 'square', 0.15, 0.1, 0.02);
-          step++;
-        }, 250);
-      }
+    function playBGM(type) {
+      if (currentBgmType === type && !bgmAudio.paused) return;
+      currentBgmType = type;
+      bgmAudio.src = BGM_URLS[type];
+      bgmAudio.play().catch(err => {
+        // ブラウザの自動再生ポリシーでブロックされた場合はユーザーの初回アクションを待つ
+        console.log("ユーザーのアクション待ち: BGM再生待機中");
+      });
     }
 
     function stopBGM() {
-      if (bgmIntervalId) {
-        clearInterval(bgmIntervalId);
-        bgmIntervalId = null;
-      }
+      bgmAudio.pause();
+      currentBgmType = null;
     }
 
-    // ユーザーの画面クリック等の初アクションでAudioContextを有効化・BGMスタート
+    // 初回ユーザーアクションでBGM再生を許可・開始
     window.addEventListener('click', () => {
-      initAudio();
-      if (!bgmIntervalId) {
-        startBGM('menu');
+      if (bgmAudio.paused) {
+        playBGM(currentBgmType || 'menu');
       }
     }, { once: true });
 
@@ -452,6 +422,9 @@
       myUsername = prompt('ユーザーネームを入力してください！') || '名無しさん';
       localStorage.setItem('yururon_username', myUsername);
     }
+
+    // 初回読み込み時にメニューBGMを呼び出し
+    playBGM('menu');
 
     function checkBanStatus() {
       fetch(`${SERVER_URL}/check-ban?username=${encodeURIComponent(myUsername)}`)
@@ -638,7 +611,7 @@
       document.getElementById('menu-screen').style.display = 'flex';
       document.getElementById('display-box').innerText = "STATUS : READY";
 
-      startBGM('menu');
+      playBGM('menu');
     }
 
     function startMatching() {
@@ -646,8 +619,6 @@
         alert("あなたのアカウントは不正行為または不適切な名称・言動によりBANされています。プレイできません。");
         return;
       }
-
-      initAudio();
 
       clearAllTimers();
       hasTriggeredCountdown = false;
@@ -746,7 +717,8 @@
           
           isMatchEstablished = true;
 
-          startBGM('battle');
+          // バトル画面への遷移時にBGMを切り替え
+          playBGM('battle');
 
           document.getElementById('vs-match-screen').style.display = 'none';
           document.getElementById('debate-screen').style.display = 'flex';
