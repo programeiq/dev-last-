@@ -1,9 +1,10 @@
 const express = require('express');
+const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ==========================================
-// 1. ミドルウェア & CORS設定
+// 1. ミドルウェア & CORS設定 & 静的ファイル配信
 // ==========================================
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -16,7 +17,8 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.static('public'));
+// publicフォルダ内の New_Breath.mp3 等を配信できるように設定
+app.use(express.static(path.join(__dirname, 'public')));
 
 // ==========================================
 // 2. 本格ディベートお題データ（300個）
@@ -173,7 +175,6 @@ function getOrCreateUserStat(username) {
   return userStats[cleanName];
 }
 
-// 勝敗記録関数
 function recordBattleResult(winnerName, loserName) {
   if (winnerName) {
     const winner = getOrCreateUserStat(winnerName);
@@ -196,6 +197,15 @@ function recordBattleResult(winnerName, loserName) {
 // ==========================================
 // 4. API エンドポイント
 // ==========================================
+
+// BGM情報取得 API
+app.get('/api/bgm', (req, res) => {
+  res.json({
+    title: "New Breath",
+    file: "/New_Breath.mp3",
+    loop: true
+  });
+});
 
 // BANチェック API
 app.get('/check-ban', (req, res) => {
@@ -273,7 +283,7 @@ app.get('/get-messages', (req, res) => {
   res.json(activeRooms[roomName]);
 });
 
-// メッセージ送信 API（HPバグ修正 & 勝敗自動記録版）
+// メッセージ送信 API（HP制御＆勝敗自動判定）
 app.post('/send-message', (req, res) => {
   const { roomName, sender, text, damage } = req.body;
   if (!roomName || !activeRooms[roomName]) {
@@ -289,15 +299,12 @@ app.post('/send-message', (req, res) => {
 
   room.messages.push({ sender, text });
 
-  // ダメージ計算（指定がなければデフォルト100、負の値防止）
   const dmg = (typeof damage === 'number' && damage > 0) ? damage : 100;
   const enemyName = room.players.find(p => normalizeName(p) !== senderName);
 
   if (enemyName && room.hpData[enemyName] !== undefined && !room.isFinished) {
-    // 0未満にならないようMath.maxで保護
     room.hpData[enemyName] = Math.max(0, room.hpData[enemyName] - dmg);
 
-    // HPが0になった場合、自動的に決着をつけてランキングに記録
     if (room.hpData[enemyName] === 0) {
       room.isFinished = true;
       recordBattleResult(senderName, enemyName);
@@ -307,7 +314,7 @@ app.post('/send-message', (req, res) => {
   res.json({ success: true, hpData: room.hpData, isFinished: room.isFinished });
 });
 
-// 勝敗結果手動記録 API（クライアント側からの通知用）
+// 勝敗結果手動記録 API
 app.post('/record-result', (req, res) => {
   const { winner, loser } = req.body;
   recordBattleResult(winner, loser);
