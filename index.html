@@ -345,15 +345,14 @@
     const SERVER_URL = 'https://game-server-production-b1e3.up.railway.app/';
 
     /* --- 外部BGM再生システム --- */
-    // 自由に差し替え可能な外部音声ファイルのURLを設定
     const BGM_URLS = {
-      menu: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3',   // メニュー用ゆったりBGM
-      battle: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3' // バトル用アップテンポBGM
+      menu: 'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3',
+      battle: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3'
     };
 
     const bgmAudio = new Audio();
     bgmAudio.loop = true;
-    bgmAudio.volume = 0.2; // 音量（0.0 〜 1.0）
+    bgmAudio.volume = 0.2;
     let currentBgmType = null;
 
     function playBGM(type) {
@@ -361,7 +360,6 @@
       currentBgmType = type;
       bgmAudio.src = BGM_URLS[type];
       bgmAudio.play().catch(err => {
-        // ブラウザの自動再生ポリシーでブロックされた場合はユーザーの初回アクションを待つ
         console.log("ユーザーのアクション待ち: BGM再生待機中");
       });
     }
@@ -371,7 +369,6 @@
       currentBgmType = null;
     }
 
-    // 初回ユーザーアクションでBGM再生を許可・開始
     window.addEventListener('click', () => {
       if (bgmAudio.paused) {
         playBGM(currentBgmType || 'menu');
@@ -423,7 +420,6 @@
       localStorage.setItem('yururon_username', myUsername);
     }
 
-    // 初回読み込み時にメニューBGMを呼び出し
     playBGM('menu');
 
     function checkBanStatus() {
@@ -531,16 +527,46 @@
       updateUserDataDisplay();
     }
 
+    /* --- 強化版ランキング取得処理 --- */
     function openRankingModal() {
       document.getElementById('ranking-modal').style.display = 'flex';
-      document.getElementById('ranking-modal-body').innerText = 'ランキングを取得中...';
+      const bodyElem = document.getElementById('ranking-modal-body');
+      bodyElem.innerText = 'ランキングを取得中...';
+
       fetch(`${SERVER_URL}/ranking`)
         .then(res => res.text())
-        .then(data => {
-          document.getElementById('ranking-modal-body').innerText = data || "ランキングデータがまだありません。";
+        .then(textData => {
+          if (!textData || textData.trim() === "") {
+            bodyElem.innerText = "ランキングデータがまだありません。";
+            return;
+          }
+
+          // JSONパースを試みる
+          try {
+            const jsonData = JSON.parse(textData);
+            if (Array.isArray(jsonData)) {
+              if (jsonData.length === 0) {
+                bodyElem.innerText = "ランキングデータがまだありません。";
+                return;
+              }
+              // 配列オブジェクトなら綺麗にフォーマット
+              let html = "";
+              jsonData.forEach((item, index) => {
+                const name = item.name || item.username || "名無し";
+                const score = item.score !== undefined ? item.score : (item.level || item.win || 0);
+                html += `${index + 1}位 : ${name} (${score})\n`;
+              });
+              bodyElem.innerText = html;
+              return;
+            }
+          } catch (e) {
+            // JSONじゃない場合はテキストそのまま表示（パース失敗を許容）
+          }
+
+          bodyElem.innerText = textData;
         })
-        .catch(() => {
-          document.getElementById('ranking-modal-body').innerText = "取得失敗：サーバーと通信できませんでした。";
+        .catch(err => {
+          bodyElem.innerText = "取得失敗：サーバーと通信できませんでした。";
         });
     }
 
@@ -717,7 +743,6 @@
           
           isMatchEstablished = true;
 
-          // バトル画面への遷移時にBGMを切り替え
           playBGM('battle');
 
           document.getElementById('vs-match-screen').style.display = 'none';
