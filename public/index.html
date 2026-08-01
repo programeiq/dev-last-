@@ -387,6 +387,25 @@
       localStorage.setItem('yururon_username', myUsername);
     }
 
+    <!-- BGM再生プレイヤー -->
+<audio id="bgm" src="/New_Breath.mp3" loop autoplay></audio>
+
+<!-- 音量調整用 UI（任意） -->
+<div style="position: fixed; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 8px 12px; border-radius: 8px; font-size: 12px; z-index: 9999;">
+  🎵 BGM Volume: 
+  <input type="range" id="bgmVolume" min="0" max="1" step="0.05" value="0.3" onchange="document.getElementById('bgm').volume = this.value">
+</div>
+
+<script>
+  // ブラウザの自動再生制限対策：ユーザーが画面を1回クリックしたら再生
+  document.addEventListener('click', () => {
+    const audio = document.getElementById('bgm');
+    if (audio.paused) {
+      audio.volume = 0.3; // 初期音量を30%に設定
+      audio.play().catch(e => console.log("再生制限ブロック:", e));
+    }
+  }, { once: true });
+</script>
     // BAN判定チェック (サーバー側での検証)
     function checkBanStatus() {
       fetch(`${SERVER_URL}/check-ban?username=${encodeURIComponent(myUsername)}`)
