@@ -3,10 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- GitHub Pagesサブディレクトリでのルーティングエラー(Cannot GET)防止 -->
+  <base href="./">
   <title>ゆるろん</title>
   <!-- Socket.ioライブラリ（Render側のWebSocket通信用） -->
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
     body {
       background-color: #31A87B;
       color: #333333;
@@ -29,7 +35,6 @@
       flex-direction: column;
       justify-content: space-between;
       align-items: center;
-      box-sizing: border-box;
       padding: 20px;
     }
 
@@ -107,7 +112,6 @@
       max-width: 500px;
       max-height: 80vh;
       padding: 25px;
-      box-sizing: border-box;
       box-shadow: 0 10px 25px rgba(0,0,0,0.3);
       display: flex;
       flex-direction: column;
@@ -125,7 +129,7 @@
 
     /* VSマッチング画面 */
     #vs-match-screen { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100vw; height: 100vh; background-color: #31A87B; }
-    .vs-match-box { background-color: #A0A0A0; border: 6px solid #FFFFFF; border-radius: 20px; width: 90%; max-width: 800px; padding: 40px 20px; display: flex; justify-content: space-around; align-items: center; box-shadow: 0 15px 30px rgba(0,0,0,0.3); position: relative; box-sizing: border-box; }
+    .vs-match-box { background-color: #A0A0A0; border: 6px solid #FFFFFF; border-radius: 20px; width: 90%; max-width: 800px; padding: 40px 20px; display: flex; justify-content: space-around; align-items: center; box-shadow: 0 15px 30px rgba(0,0,0,0.3); position: relative; }
     #match-countdown-banner { position: absolute; top: -60px; background-color: #FF7675; color: white; padding: 10px 30px; border-radius: 30px; font-size: 22px; font-weight: bold; border: 3px solid #FFFFFF; box-shadow: 0 5px 15px rgba(0,0,0,0.2); white-space: nowrap; }
     .match-player-slot { display: flex; flex-direction: column; align-items: center; width: 40%; }
     .match-icon-container { width: 200px; height: 200px; background-color: #8B5A2B; border: 4px solid #FFFFFF; box-shadow: 0 8px 16px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 20px; }
@@ -135,18 +139,18 @@
     .match-center-vs { font-size: 60px; font-weight: 900; color: #FFF385; text-shadow: 4px 4px 0px #333; font-style: italic; }
 
     /* バトル画面 */
-    #debate-screen { display: none; flex-direction: column; align-items: center; width: 95%; max-width: 700px; height: 85vh; border: 4px solid #FFFFFF; border-radius: 25px; background-color: #0d2b21; padding: 20px; box-shadow: 0 12px 24px rgba(0,0,0,0.15); box-sizing: border-box; }
-    #theme-info { width: 100%; background-color: #FF7675; border: 3px solid #FFFFFF; border-radius: 15px; padding: 12px; text-align: center; color: white; font-weight: bold; margin-bottom: 10px; box-sizing: border-box; }
+    #debate-screen { display: none; flex-direction: column; align-items: center; width: 95%; max-width: 700px; height: 85vh; border: 4px solid #FFFFFF; border-radius: 25px; background-color: #0d2b21; padding: 20px; box-shadow: 0 12px 24px rgba(0,0,0,0.15); }
+    #theme-info { width: 100%; background-color: #FF7675; border: 3px solid #FFFFFF; border-radius: 15px; padding: 12px; text-align: center; color: white; font-weight: bold; margin-bottom: 10px; }
     #timer-panel { width: 100%; display: flex; justify-content: space-between; margin-bottom: 10px; gap: 10px; }
     .time-sub-box { flex: 1; text-align: center; font-size: 14px; font-weight: bold; padding: 8px; border-radius: 10px; border: 2px solid #FFFFFF; transition: background-color 0.2s; }
     #game-timer-box { background-color: #FFEAA7; color: #333333; }
     #response-timer-box { background-color: #1DD1A1; color: white; }
 
-    #hp-container { width: 100%; background-color: rgba(0,0,0,0.2); border: 2px solid #FFFFFF; border-radius: 15px; padding: 12px; margin-bottom: 15px; box-sizing: border-box; color: white; font-size: 14px; font-weight: bold; }
+    #hp-container { width: 100%; background-color: rgba(0,0,0,0.2); border: 2px solid #FFFFFF; border-radius: 15px; padding: 12px; margin-bottom: 15px; color: white; font-size: 14px; font-weight: bold; }
     .hp-bar-bg { width: 100%; background-color: #FFF; height: 18px; border-radius: 9px; overflow: hidden; margin-top: 5px; }
     .hp-bar-fill { height: 100%; background-color: #1DD1A1; width: 100%; transition: width 0.3s ease; }
 
-    #chat-box { width: 100%; flex-grow: 1; overflow-y: auto; margin-bottom: 15px; padding: 15px; box-sizing: border-box; display: flex; flex-direction: column; background: rgba(255,255,255,0.9); border-radius: 20px; }
+    #chat-box { width: 100%; flex-grow: 1; overflow-y: auto; margin-bottom: 15px; padding: 15px; display: flex; flex-direction: column; background: rgba(255,255,255,0.9); border-radius: 20px; }
     .message-row { display: flex; flex-direction: column; width: 100%; margin: 6px 0; }
     .my-message { align-items: flex-end; }
     .other-message { align-items: flex-start; }
@@ -168,7 +172,7 @@
   <div id="menu-screen">
     <div id="user-profile-area">
       <div id="user-icon-slot" onclick="triggerImageUpload()" title="クリックして写真をアップロード！">
-        <img id="custom-icon-img" style="display:none;">
+        <img id="custom-icon-img" style="display:none;" alt="ユーザーアイコン">
         <span id="fallback-text">写真<br>UP</span>
       </div>
       <input type="file" id="icon-file-input" accept="image/*" onchange="handleImageUpload(event)">
@@ -287,16 +291,14 @@
 
   <script>
     /* ========================================================
-       ★ Renderの接続先サーバーURLの設定
-       ※「https://YOUR-APP-NAME.onrender.com」の場所を
-         RenderでコピーしたURLに書き換えてね！
+       ★ Renderの接続先サーバーURL（設定済み）
        ======================================================== */
     const SERVER_URL = "https://dev-last.onrender.com";
 
     /* プレイヤーデータ */
     let myUsername = localStorage.getItem('yururon_username') || '';
-    let myLevel = parseInt(localStorage.getItem('yururon_level')) || 1;
-    let myExp = parseInt(localStorage.getItem('yururon_exp')) || 0;
+    let myLevel = parseInt(localStorage.getItem('yururon_level'), 10) || 1;
+    let myExp = parseInt(localStorage.getItem('yururon_exp'), 10) || 0;
     let currentLabel = localStorage.getItem('yururon_label') || 'ゆるろん初心者';
 
     if (!myUsername) {
@@ -313,12 +315,18 @@
       { lv: 100, label: '伝説 of ディベーター' }
     ];
 
-    /* Socket.io接続の初期化 */
+    /* Socket.io接続の安全な初期化 */
     let socket = null;
-    try {
-      socket = io(SERVER_URL);
-    } catch (e) {
-      console.error("Socket.ioの接続に失敗しました:", e);
+    if (typeof io !== 'undefined') {
+      try {
+        socket = io(SERVER_URL, {
+          transports: ['websocket', 'polling']
+        });
+      } catch (e) {
+        console.error("Socket.io初期化エラー:", e);
+      }
+    } else {
+      console.warn("Socket.ioライブラリがロードされていません。");
     }
 
     /* タイマー関連 */
@@ -378,7 +386,7 @@
         message += `${index + 1}: [${isUnlocked ? '解放済' : 'Lv.' + item.lv + 'で解放'}] ${item.label}\n`;
       });
       let choice = prompt(message);
-      let idx = parseInt(choice) - 1;
+      let idx = parseInt(choice, 10) - 1;
       if (idx >= 0 && idx < itemsList.length) {
         if (myLevel >= itemsList[idx].lv) {
           currentLabel = itemsList[idx].label;
@@ -392,7 +400,7 @@
     function openRankingModal() {
       document.getElementById('ranking-modal').style.display = 'flex';
       const bodyElem = document.getElementById('ranking-modal-body');
-      bodyElem.innerText = "通信中...\n(※スリープ中の場合は約30秒かかります)";
+      bodyElem.innerText = "通信中...\n(※Renderスリープ中の場合は約30秒かかります)";
 
       fetch(`${SERVER_URL}/ranking`)
         .then(res => {
@@ -443,13 +451,14 @@
 
       const mySavedIcon = localStorage.getItem('yururon_user_icon');
       const myIconSlot = document.getElementById('match-my-icon-slot');
-      if (mySavedIcon) { myIconSlot.innerHTML = `<img src="${mySavedIcon}">`; } 
+      if (mySavedIcon) { myIconSlot.innerHTML = `<img src="${mySavedIcon}" alt="アイコン">`; } 
       else { myIconSlot.innerHTML = `<span class="match-icon-fallback">NO IMAGE</span>`; }
       document.getElementById('match-my-info-bar').innerText = `Lv.${myLevel} ${myUsername}`;
 
-      // Render サーバーへマッチング要求を送信
       if (socket) {
         socket.emit('join_match', { name: myUsername, level: myLevel });
+      } else {
+        alert("サーバーと接続されていません。Renderの接続URLを確認してください。");
       }
     }
 
@@ -529,7 +538,6 @@
       enemyHP = Math.max(0, enemyHP - 100);
       updateHPDisplay();
 
-      // Render サーバーへメッセージを送信
       if (socket) {
         socket.emit('send_message', { sender: myUsername, message: text });
       }
