@@ -36,19 +36,36 @@ io.on('connection', (socket) => {
 
       const roomName = `room_${waitingPlayer.id}_${socket.id}`;
       const selectedTheme = themes[Math.floor(Math.random() * themes.length)];
-      const isPlayer1SideA = Math.random() < 0.5;
-      const p1Side = isPlayer1SideA ? selectedTheme.sideA : selectedTheme.sideB;
-      const p2Side = isPlayer1SideA ? selectedTheme.sideB : selectedTheme.sideA;
+
+      // 50%の確率で「前者（A派）」と「後者（B派）」をランダム割り当て
+      const isPlayer1Former = Math.random() < 0.5;
+
+      const p1Role = isPlayer1Former ? { side: selectedTheme.sideA, position: "former" } : { side: selectedTheme.sideB, position: "latter" };
+      const p2Role = isPlayer1Former ? { side: selectedTheme.sideB, position: "latter" } : { side: selectedTheme.sideA, position: "former" };
 
       const INITIAL_HP = 10000;
 
       // ★ ルーム状態の初期設定
       activeRooms[roomName] = {
         theme: selectedTheme.title,
-        timeLeft: 180, // 制限時間 3分 (180秒)
+        sideA: selectedTheme.sideA, // 前者テーマ
+        sideB: selectedTheme.sideB, // 後者テーマ
+        timeLeft: 180, // 3分 (180秒)
         players: {
-          [waitingPlayer.id]: { name: waitingPlayer.name, side: p1Side, hp: INITIAL_HP, isTyping: false },
-          [socket.id]: { name: data.name, side: p2Side, hp: INITIAL_HP, isTyping: false }
+          [waitingPlayer.id]: {
+            name: waitingPlayer.name,
+            side: p1Role.side,
+            position: p1Role.position, // "former"（前者） または "latter"（後者）
+            hp: INITIAL_HP,
+            isTyping: false
+          },
+          [socket.id]: {
+            name: data.name,
+            side: p2Role.side,
+            position: p2Role.position, // "former"（前者） または "latter"（後者）
+            hp: INITIAL_HP,
+            isTyping: false
+          }
         },
         intervalId: null
       };
@@ -56,23 +73,32 @@ io.on('connection', (socket) => {
       waitingPlayer.socket.join(roomName);
       socket.join(roomName);
 
-      // マッチング成功通知
+      // ★ 1人目（待機していた人）へ通知
       waitingPlayer.socket.emit('match_found', {
         opponentName: data.name,
         opponentLevel: data.level,
         theme: selectedTheme.title,
-        yourSide: p1Side,
-        opponentSide: p2Side,
+        sideA: selectedTheme.sideA,      // 前者テーマ（例: きのこの山）
+        sideB: selectedTheme.sideB,      // 後者テーマ（例: たけのこの里）
+        yourSide: p1Role.side,           // 自分の担当（例: きのこの山派）
+        yourPosition: p1Role.position,   // "former" (前者) or "latter" (後者)
+        opponentSide: p2Role.side,       // 相手の担当
+        opponentPosition: p2Role.position,
         initialHp: INITIAL_HP,
         roomId: roomName
       });
 
+      // ★ 2人目（挑戦者）へ通知
       socket.emit('match_found', {
         opponentName: waitingPlayer.name,
         opponentLevel: waitingPlayer.level,
         theme: selectedTheme.title,
-        yourSide: p2Side,
-        opponentSide: p1Side,
+        sideA: selectedTheme.sideA,      // 前者テーマ
+        sideB: selectedTheme.sideB,      // 後者テーマ
+        yourSide: p2Role.side,           // 自分の担当
+        yourPosition: p2Role.position,   // "former" (前者) or "latter" (後者)
+        opponentSide: p1Role.side,       // 相手の担当
+        opponentPosition: p1Role.position,
         initialHp: INITIAL_HP,
         roomId: roomName
       });
@@ -82,7 +108,6 @@ io.on('connection', (socket) => {
       room.intervalId = setInterval(() => {
         if (!activeRooms[roomName]) return;
 
-        // 制限時間カウントダウン
         room.timeLeft -= 1;
 
         // 打っていない（isTyping === false）プレイヤーのHPを1減らす
@@ -98,7 +123,7 @@ io.on('connection', (socket) => {
           players: room.players
         });
 
-        // HP判定またはタイムアップ判定
+        // 勝敗判定
         const pIds = Object.keys(room.players);
         const p1 = room.players[pIds[0]];
         const p2 = room.players[pIds[1]];
@@ -148,13 +173,15 @@ io.on('connection', (socket) => {
     const room = activeRooms[roomId];
 
     if (room && room.players[socket.id]) {
-      // 送信したら自傷 100 ダメージ
-      room.players[socket.id].hp = Math.max(0, room.players[socket.id].hp - 100);
-      room.players[socket.id].isTyping = false; // 送信した瞬間はタイピング停止扱い
+      const sender = room.players[socket.id];
+      sender.hp = Math.max(0, sender.hp - 100);
+      sender.isTyping = false;
 
       io.to(roomId).emit('receive_message', {
         senderId: socket.id,
-        senderName: room.players[socket.id].name,
+        senderName: sender.name,
+        senderSide: sender.side,           // どちらの派閥か
+        senderPosition: sender.position,   // "former" (前者) か "latter" (後者) か
         message: message,
         players: room.players
       });
@@ -166,23 +193,12 @@ io.on('connection', (socket) => {
     if (waitingPlayer && waitingPlayer.id === socket.id) {
       waitingPlayer = null;
     }
-    // 切断時にタイマーのクリーンアップ処理
     Object.keys(activeRooms).forEach(rName => {
       if (activeRooms[rName].players[socket.id]) {
         clearInterval(activeRooms[rName].intervalId);
         delete activeRooms[rName];
       }
     });
-    // BGMオブジェクトの作成
-const bgm = new Audio('New_Breath.mp3'); // ファイル名に合わせて変更してね
-bgm.loop = true; // ループ再生
-
-// PLAYボタンなどを押したタイミングで再生をスタートする
-document.getElementById('play-button').addEventListener('click', () => {
-  bgm.play().catch(error => {
-    console.log("BGM再生エラー:", error);
-  });
-});
   });
 });
 
