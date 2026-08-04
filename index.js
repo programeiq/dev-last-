@@ -3,8 +3,9 @@ const http = require('http');
 const path = require('path');
 const { Server } = require('socket.io');
 
-// お題300選データ（themes.js）を読み込み
+// お題データ＆NGワードデータの読み込み
 const themes = require('./themes');
+const ngWords = require('./ngwords');
 
 const app = express();
 const server = http.createServer(app);
@@ -25,8 +26,43 @@ app.get('/', (req, res) => {
 // 待機中のプレイヤー
 let waitingPlayer = null;
 
-// アクティブなルーム情報（HP・時間・プレイヤー状態）を保持
+// アクティブなルーム情報
 const activeRooms = {};
+
+// ★ プレイヤーのペナルティ管理データ
+// userPenalties[userName] = { kickCount: 0, isBanned: false }
+const userPenalties = {};
+
+// ★ NGワード判定関数（誤検知対策版）
+function containsNGWord(text) {
+  if (!text) return false;
+
+  // 全角英数やスペースを正規化して小文字化
+  let cleanText = text.replace(/\s+/g, '').toLowerCase();
+
+  // ①【誤検知対策】日常会話の「〜だしね」「〜私ね」「〜ですしね」などを一時的に除去して安全化
+  cleanText = cleanText
+    .replace(/(だ|です|私|た|し)しね([あ-んア-ンa-zA-Z]*)/g, '') // 「〜だしね」「私ね」等を無効化
+    .replace(/かしね/g, '')                                     // 「〜かしね」等を無効化
+    .replace(/らしね/g, '');                                     // 「〜らしね」等を無効化
+
+  // ② 明確な暴言パターン（正規表現で判定）
+  const explicitViolations = [
+    /死ね/,                           // 漢字の「死ね」
+    /しね([よゆやっぁ-ぉお!！?？]*)/,          // 「しね」「しねよ」「しねぇ」などのひらがな暴言
+    /殺す/, /ころす/,
+    /失せろ/, /うせろ/,
+    /消えろ/, /きえろ/
+  ];
+
+  // パターン判定（正規表現チェック）
+  const isExplicitMatch = explicitViolations.some(pattern => pattern.test(cleanText));
+  
+  // 単純なNGワードリスト判定（「バカ」「ゴミ」など）
+  const isSimpleMatch = ngWords.some(word => cleanText.includes(word.toLowerCase()));
+
+  return isExplicitMatch || isSimpleMatch;
+}
 
 io.on('connection', (socket) => {
   console.log(`🟢 プレイヤーが接続しました: ${socket.id}`);
@@ -35,17 +71,25 @@ io.on('connection', (socket) => {
   // 1. マッチング処理
   // ==========================================
   socket.on('join_match', (data) => {
-    console.log(`🔍 マッチング検索: ${data.name} (Lv.${data.level})`);
+    const userName = data.name ? data.name.trim() : "名無し";
+
+    // ★ BAN済みチェック
+    if (userPenalties[userName] && userPenalties[userName].isBanned) {
+      console.log(`🚫 BAN中のユーザーの接続を拒否しました: ${userName}`);
+      socket.emit('banned_notification', {
+        reason: "暴言・不適切な発言が3回検知されたため、アカウントがBANされています。"
+      });
+      return;
+    }
+
+    console.log(`🔍 マッチング検索: ${userName} (Lv.${data.level})`);
 
     if (waitingPlayer && waitingPlayer.id !== socket.id) {
-      console.log(`🎉 マッチング成立！: ${waitingPlayer.name} vs ${data.name}`);
+      console.log(`🎉 マッチング成立！: ${waitingPlayer.name} vs ${userName}`);
 
       const roomName = `room_${waitingPlayer.id}_${socket.id}`;
-      
-      // 300個のお題からランダム選択
       const selectedTheme = themes[Math.floor(Math.random() * themes.length)];
 
-      // 50%の確率で「前者（former/sideA）」と「後者（latter/sideB）」をシャッフル割り当て
       const isPlayer1Former = Math.random() < 0.5;
       const p1Role = isPlayer1Former 
         ? { side: selectedTheme.sideA, position: "former" } 
@@ -56,29 +100,28 @@ io.on('connection', (socket) => {
 
       const INITIAL_HP = 10000;
 
-      // ルームの初期状態をセット
       activeRooms[roomName] = {
         theme: selectedTheme.title,
         sideA: selectedTheme.sideA,
         sideB: selectedTheme.sideB,
-        timeLeft: 180, // 制限時間 3分 (180秒)
+        timeLeft: 180,
         players: {
           [waitingPlayer.id]: {
             id: waitingPlayer.id,
             name: waitingPlayer.name,
             level: waitingPlayer.level,
             side: p1Role.side,
-            position: p1Role.position, // "former" または "latter"
+            position: p1Role.position,
             hp: INITIAL_HP,
             isTyping: false,
             socket: waitingPlayer.socket
           },
           [socket.id]: {
             id: socket.id,
-            name: data.name,
+            name: userName,
             level: data.level,
             side: p2Role.side,
-            position: p2Role.position, // "former" または "latter"
+            position: p2Role.position,
             hp: INITIAL_HP,
             isTyping: false,
             socket: socket
@@ -90,9 +133,8 @@ io.on('connection', (socket) => {
       waitingPlayer.socket.join(roomName);
       socket.join(roomName);
 
-      // ★ 1人目（待機していた人）へ送信
       waitingPlayer.socket.emit('match_found', {
-        opponentName: data.name,
+        opponentName: userName,
         opponentLevel: data.level,
         theme: selectedTheme.title,
         sideA: selectedTheme.sideA,
@@ -105,7 +147,6 @@ io.on('connection', (socket) => {
         roomId: roomName
       });
 
-      // ★ 2人目（今マッチングした人）へ送信
       socket.emit('match_found', {
         opponentName: waitingPlayer.name,
         opponentLevel: waitingPlayer.level,
@@ -120,34 +161,30 @@ io.on('connection', (socket) => {
         roomId: roomName
       });
 
-      // ★ 1秒ごとのループ処理（放置HP減算＆タイマー進行）
       const room = activeRooms[roomName];
       room.intervalId = setInterval(() => {
         if (!activeRooms[roomName]) return;
 
         room.timeLeft -= 1;
 
-        // 打っていない（isTyping === false）プレイヤーのHPを1減らす
+        // タイピング中ではないプレイヤーのHPを毎秒1削減
         Object.keys(room.players).forEach(pId => {
           if (!room.players[pId].isTyping) {
             room.players[pId].hp = Math.max(0, room.players[pId].hp - 1);
           }
         });
 
-        // 通信データ用（内部のsocketオブジェクトを除外して送信）
         const sanitizedPlayers = {};
         Object.keys(room.players).forEach(id => {
           const { socket, ...rest } = room.players[id];
           sanitizedPlayers[id] = rest;
         });
 
-        // ルーム全体に毎秒のステータス（HP・残り時間）を更新通知
         io.to(roomName).emit('tick_status', {
           timeLeft: room.timeLeft,
           players: sanitizedPlayers
         });
 
-        // タイムアップまたはHP0による自動決着判定
         const pIds = Object.keys(room.players);
         const p1 = room.players[pIds[0]];
         const p2 = room.players[pIds[1]];
@@ -165,7 +202,6 @@ io.on('connection', (socket) => {
             finalPlayers: sanitizedPlayers
           });
 
-          // Socket.ioのルーム解散・退室処理
           p1.socket.leave(roomName);
           p2.socket.leave(roomName);
           delete activeRooms[roomName];
@@ -177,16 +213,16 @@ io.on('connection', (socket) => {
     } else {
       waitingPlayer = {
         id: socket.id,
-        name: data.name,
+        name: userName,
         level: data.level,
         socket: socket
       };
-      console.log(`⏳ 待機登録: ${data.name}`);
+      console.log(`⏳ 待機登録: ${userName}`);
     }
   });
 
   // ==========================================
-  // 2. タイピング状態更新（打ってる間はHP減少停止）
+  // 2. タイピング状態更新
   // ==========================================
   socket.on('typing_status', (data) => {
     const { roomId, isTyping } = data;
@@ -197,7 +233,7 @@ io.on('connection', (socket) => {
   });
 
   // ==========================================
-  // 3. メッセージ送信（相手に 100 ダメージ発生！）
+  // 3. メッセージ送信（NG判定・ダメージ100発生）
   // ==========================================
   socket.on('send_message', (data) => {
     const { roomId, message } = data;
@@ -205,9 +241,71 @@ io.on('connection', (socket) => {
 
     if (room && room.players[socket.id]) {
       const sender = room.players[socket.id];
-      sender.isTyping = false; // 送信後はタイピング停止状態に戻す
+      const userName = sender.name;
 
-      // ★ 相手のIDを探して、相手のHPを100減らす（攻撃！）
+      // ★ NGワードのチェック
+      if (containsNGWord(message)) {
+        console.log(`⚠️ NGワード検知！ 発言者: ${userName} ("${message}")`);
+
+        if (!userPenalties[userName]) {
+          userPenalties[userName] = { kickCount: 0, isBanned: false };
+        }
+
+        userPenalties[userName].kickCount += 1;
+        const currentKicks = userPenalties[userName].kickCount;
+
+        clearInterval(room.intervalId);
+
+        const opponentId = Object.keys(room.players).find(id => id !== socket.id);
+        const opponentName = opponentId ? room.players[opponentId].name : "相手";
+
+        if (currentKicks >= 3) {
+          // 3回目で BAN
+          userPenalties[userName].isBanned = true;
+          console.log(`🔨 ${userName} をBAN（アカウント停止）にしました。`);
+
+          socket.emit('kicked_notification', {
+            reason: `不適切な発言（NGワード）が検出されました。\n警告回数が3回に達したため、アカウントがBANされました。`,
+            isBanned: true
+          });
+
+          if (opponentId && room.players[opponentId]) {
+            room.players[opponentId].socket.emit('game_over', {
+              winnerName: opponentName,
+              reason: "OPPONENT_BANNED"
+            });
+          }
+        } else {
+          // 1〜2回目は キック 処理
+          console.log(`⚠️ ${userName} をキックしました (${currentKicks}/3回)`);
+
+          socket.emit('kicked_notification', {
+            reason: `不適切な発言（NGワード）が検出されたため、部屋からキックされました。\n（累積警告: ${currentKicks}/3回。3回でBANになります）`,
+            isBanned: false,
+            kickCount: currentKicks
+          });
+
+          if (opponentId && room.players[opponentId]) {
+            room.players[opponentId].socket.emit('game_over', {
+              winnerName: opponentName,
+              reason: "OPPONENT_KICKED"
+            });
+          }
+        }
+
+        Object.keys(room.players).forEach(pId => {
+          if (room.players[pId].socket) {
+            room.players[pId].socket.leave(roomId);
+          }
+        });
+        delete activeRooms[roomId];
+
+        return; // NG判定時はメッセージ送信処理をスキップ
+      }
+
+      // --- 通常メッセージ送信（相手に100ダメージ） ---
+      sender.isTyping = false;
+
       const opponentId = Object.keys(room.players).find(id => id !== socket.id);
       if (opponentId && room.players[opponentId]) {
         room.players[opponentId].hp = Math.max(0, room.players[opponentId].hp - 100);
@@ -219,7 +317,6 @@ io.on('connection', (socket) => {
         sanitizedPlayers[id] = rest;
       });
 
-      // メッセージと最新HP状態をルーム全体にブロードキャスト
       io.to(roomId).emit('receive_message', {
         senderId: socket.id,
         senderName: sender.name,
