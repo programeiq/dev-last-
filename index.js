@@ -98,7 +98,7 @@ io.on('connection', (socket) => {
         sideA: selectedTheme.sideA,
         sideB: selectedTheme.sideB,
         yourSide: p1Role.side,
-        yourPosition: p1Role.position,   // "former" か "latter"
+        yourPosition: p1Role.position,
         opponentSide: p2Role.side,
         opponentPosition: p2Role.position,
         initialHp: INITIAL_HP,
@@ -113,7 +113,7 @@ io.on('connection', (socket) => {
         sideA: selectedTheme.sideA,
         sideB: selectedTheme.sideB,
         yourSide: p2Role.side,
-        yourPosition: p2Role.position,   // "former" か "latter"
+        yourPosition: p2Role.position,
         opponentSide: p1Role.side,
         opponentPosition: p1Role.position,
         initialHp: INITIAL_HP,
@@ -197,7 +197,7 @@ io.on('connection', (socket) => {
   });
 
   // ==========================================
-  // 3. メッセージ送信（自傷 100 ダメージ発生）
+  // 3. メッセージ送信（相手に 100 ダメージ発生！）
   // ==========================================
   socket.on('send_message', (data) => {
     const { roomId, message } = data;
@@ -205,9 +205,13 @@ io.on('connection', (socket) => {
 
     if (room && room.players[socket.id]) {
       const sender = room.players[socket.id];
-      // 送信したら自傷 100 ダメージ
-      sender.hp = Math.max(0, sender.hp - 100);
       sender.isTyping = false; // 送信後はタイピング停止状態に戻す
+
+      // ★ 相手のIDを探して、相手のHPを100減らす（攻撃！）
+      const opponentId = Object.keys(room.players).find(id => id !== socket.id);
+      if (opponentId && room.players[opponentId]) {
+        room.players[opponentId].hp = Math.max(0, room.players[opponentId].hp - 100);
+      }
 
       const sanitizedPlayers = {};
       Object.keys(room.players).forEach(id => {
@@ -220,7 +224,7 @@ io.on('connection', (socket) => {
         senderId: socket.id,
         senderName: sender.name,
         senderSide: sender.side,
-        senderPosition: sender.position, // "former" (前者) か "latter" (後者)
+        senderPosition: sender.position,
         message: message,
         players: sanitizedPlayers
       });
@@ -243,14 +247,12 @@ io.on('connection', (socket) => {
 
       console.log(`🏳️ ${loserName} が降参しました。勝者: ${winnerName}`);
 
-      // ゲーム終了通知を発行
       io.to(roomId).emit('game_over', {
         winnerName: winnerName,
         surrenderedName: loserName,
         reason: "SURRENDER"
       });
 
-      // お互いをSocket.ioルームから即時脱出させる
       Object.keys(room.players).forEach(pId => {
         if (room.players[pId].socket) {
           room.players[pId].socket.leave(roomId);
@@ -267,12 +269,10 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log(`🔴 切断: ${socket.id}`);
     
-    // 待機中に抜けた場合
     if (waitingPlayer && waitingPlayer.id === socket.id) {
       waitingPlayer = null;
     }
 
-    // 対戦中に抜けた場合（相手を勝利扱いにして部屋を閉じる）
     Object.keys(activeRooms).forEach(rName => {
       const room = activeRooms[rName];
       if (room.players[socket.id]) {
