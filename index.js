@@ -173,6 +173,16 @@ io.on('connection', (socket) => {
         delete activeRooms[rName];
       }
     });
+    // BGMオブジェクトの作成
+const bgm = new Audio('bgm.mp3'); // ファイル名に合わせて変更してね
+bgm.loop = true; // ループ再生
+
+// PLAYボタンなどを押したタイミングで再生をスタートする
+document.getElementById('play-button').addEventListener('click', () => {
+  bgm.play().catch(error => {
+    console.log("BGM再生エラー:", error);
+  });
+});
   });
 });
 
