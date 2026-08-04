@@ -37,34 +37,35 @@ io.on('connection', (socket) => {
       const roomName = `room_${waitingPlayer.id}_${socket.id}`;
       const selectedTheme = themes[Math.floor(Math.random() * themes.length)];
 
-      // 50%の確率で「前者（A派）」と「後者（B派）」をランダム割り当て
       const isPlayer1Former = Math.random() < 0.5;
-
       const p1Role = isPlayer1Former ? { side: selectedTheme.sideA, position: "former" } : { side: selectedTheme.sideB, position: "latter" };
       const p2Role = isPlayer1Former ? { side: selectedTheme.sideB, position: "latter" } : { side: selectedTheme.sideA, position: "former" };
 
       const INITIAL_HP = 10000;
 
-      // ★ ルーム状態の初期設定
       activeRooms[roomName] = {
         theme: selectedTheme.title,
-        sideA: selectedTheme.sideA, // 前者テーマ
-        sideB: selectedTheme.sideB, // 後者テーマ
+        sideA: selectedTheme.sideA,
+        sideB: selectedTheme.sideB,
         timeLeft: 180, // 3分 (180秒)
         players: {
           [waitingPlayer.id]: {
+            id: waitingPlayer.id,
             name: waitingPlayer.name,
             side: p1Role.side,
-            position: p1Role.position, // "former"（前者） または "latter"（後者）
+            position: p1Role.position,
             hp: INITIAL_HP,
-            isTyping: false
+            isTyping: false,
+            socket: waitingPlayer.socket
           },
           [socket.id]: {
+            id: socket.id,
             name: data.name,
             side: p2Role.side,
-            position: p2Role.position, // "former"（前者） または "latter"（後者）
+            position: p2Role.position,
             hp: INITIAL_HP,
-            isTyping: false
+            isTyping: false,
+            socket: socket
           }
         },
         intervalId: null
@@ -73,57 +74,62 @@ io.on('connection', (socket) => {
       waitingPlayer.socket.join(roomName);
       socket.join(roomName);
 
-      // ★ 1人目（待機していた人）へ通知
+      // 1人目へ通知
       waitingPlayer.socket.emit('match_found', {
         opponentName: data.name,
         opponentLevel: data.level,
         theme: selectedTheme.title,
-        sideA: selectedTheme.sideA,      // 前者テーマ（例: きのこの山）
-        sideB: selectedTheme.sideB,      // 後者テーマ（例: たけのこの里）
-        yourSide: p1Role.side,           // 自分の担当（例: きのこの山派）
-        yourPosition: p1Role.position,   // "former" (前者) or "latter" (後者)
-        opponentSide: p2Role.side,       // 相手の担当
+        sideA: selectedTheme.sideA,
+        sideB: selectedTheme.sideB,
+        yourSide: p1Role.side,
+        yourPosition: p1Role.position,
+        opponentSide: p2Role.side,
         opponentPosition: p2Role.position,
         initialHp: INITIAL_HP,
         roomId: roomName
       });
 
-      // ★ 2人目（挑戦者）へ通知
+      // 2人目へ通知
       socket.emit('match_found', {
         opponentName: waitingPlayer.name,
         opponentLevel: waitingPlayer.level,
         theme: selectedTheme.title,
-        sideA: selectedTheme.sideA,      // 前者テーマ
-        sideB: selectedTheme.sideB,      // 後者テーマ
-        yourSide: p2Role.side,           // 自分の担当
-        yourPosition: p2Role.position,   // "former" (前者) or "latter" (後者)
-        opponentSide: p1Role.side,       // 相手の担当
+        sideA: selectedTheme.sideA,
+        sideB: selectedTheme.sideB,
+        yourSide: p2Role.side,
+        yourPosition: p2Role.position,
+        opponentSide: p1Role.side,
         opponentPosition: p1Role.position,
         initialHp: INITIAL_HP,
         roomId: roomName
       });
 
-      // ★ 1秒ごとのループ処理（放置HP減少 & 制限時間カウント）
+      // ループ処理（HP減算＆タイマー）
       const room = activeRooms[roomName];
       room.intervalId = setInterval(() => {
         if (!activeRooms[roomName]) return;
 
         room.timeLeft -= 1;
 
-        // 打っていない（isTyping === false）プレイヤーのHPを1減らす
         Object.keys(room.players).forEach(pId => {
           if (!room.players[pId].isTyping) {
             room.players[pId].hp = Math.max(0, room.players[pId].hp - 1);
           }
         });
 
-        // 定期ステータス更新を全プレイヤーに送信
-        io.to(roomName).emit('tick_status', {
-          timeLeft: room.timeLeft,
-          players: room.players
+        // 整理用データ（socket参照を除外して送信）
+        const sanitizedPlayers = {};
+        Object.keys(room.players).forEach(id => {
+          const { socket, ...rest } = room.players[id];
+          sanitizedPlayers[id] = rest;
         });
 
-        // 勝敗判定
+        io.to(roomName).emit('tick_status', {
+          timeLeft: room.timeLeft,
+          players: sanitizedPlayers
+        });
+
+        // タイムアップまたはHP0の終了判定
         const pIds = Object.keys(room.players);
         const p1 = room.players[pIds[0]];
         const p2 = room.players[pIds[1]];
@@ -138,9 +144,12 @@ io.on('connection', (socket) => {
           io.to(roomName).emit('game_over', {
             winnerName: winner,
             reason: room.timeLeft <= 0 ? "TIME_UP" : "HP_ZERO",
-            finalPlayers: room.players
+            finalPlayers: sanitizedPlayers
           });
 
+          // 全プレイヤーをSocket.ioルームから退室させる
+          p1.socket.leave(roomName);
+          p2.socket.leave(roomName);
           delete activeRooms[roomName];
         }
       }, 1000);
@@ -158,7 +167,40 @@ io.on('connection', (socket) => {
     }
   });
 
-  // ★ タイピング開始 / 停止状態の受け取り
+  // ★ 降参（サレンダー）処理
+  socket.on('surrender', (data) => {
+    const { roomId } = data;
+    const room = activeRooms[roomId];
+
+    if (room) {
+      clearInterval(room.intervalId);
+
+      // 降参していない（相手側）プレイヤーを取得
+      const opponentId = Object.keys(room.players).find(id => id !== socket.id);
+      const winnerName = opponentId ? room.players[opponentId].name : "相手";
+      const loserName = room.players[socket.id] ? room.players[socket.id].name : "プレイヤー";
+
+      console.log(`🏳️ ${loserName} が降参しました。勝者: ${winnerName}`);
+
+      // ルーム内の全員にゲーム終了（降参）を通知
+      io.to(roomId).emit('game_over', {
+        winnerName: winnerName,
+        surrenderedName: loserName,
+        reason: "SURRENDER"
+      });
+
+      // お互いをSocket.ioのルームから離脱させる
+      Object.keys(room.players).forEach(pId => {
+        if (room.players[pId].socket) {
+          room.players[pId].socket.leave(roomId);
+        }
+      });
+
+      delete activeRooms[roomId];
+    }
+  });
+
+  // タイピング状態
   socket.on('typing_status', (data) => {
     const { roomId, isTyping } = data;
     const room = activeRooms[roomId];
@@ -167,7 +209,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // ★ メッセージ送信（HPが100減る処理）
+  // メッセージ送信（自傷100ダメージ）
   socket.on('send_message', (data) => {
     const { roomId, message } = data;
     const room = activeRooms[roomId];
@@ -177,25 +219,44 @@ io.on('connection', (socket) => {
       sender.hp = Math.max(0, sender.hp - 100);
       sender.isTyping = false;
 
+      const sanitizedPlayers = {};
+      Object.keys(room.players).forEach(id => {
+        const { socket, ...rest } = room.players[id];
+        sanitizedPlayers[id] = rest;
+      });
+
       io.to(roomId).emit('receive_message', {
         senderId: socket.id,
         senderName: sender.name,
-        senderSide: sender.side,           // どちらの派閥か
-        senderPosition: sender.position,   // "former" (前者) か "latter" (後者) か
+        senderSide: sender.side,
+        senderPosition: sender.position,
         message: message,
-        players: room.players
+        players: sanitizedPlayers
       });
     }
   });
 
+  // 切断処理（対戦中に落ちた場合も相手の勝利扱いにして部屋を閉じる）
   socket.on('disconnect', () => {
     console.log(`🔴 切断: ${socket.id}`);
     if (waitingPlayer && waitingPlayer.id === socket.id) {
       waitingPlayer = null;
     }
+
     Object.keys(activeRooms).forEach(rName => {
-      if (activeRooms[rName].players[socket.id]) {
-        clearInterval(activeRooms[rName].intervalId);
+      const room = activeRooms[rName];
+      if (room.players[socket.id]) {
+        clearInterval(room.intervalId);
+
+        const opponentId = Object.keys(room.players).find(id => id !== socket.id);
+        if (opponentId && room.players[opponentId]) {
+          io.to(rName).emit('game_over', {
+            winnerName: room.players[opponentId].name,
+            reason: "DISCONNECT"
+          });
+          room.players[opponentId].socket.leave(rName);
+        }
+
         delete activeRooms[rName];
       }
     });
