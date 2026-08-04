@@ -174,7 +174,7 @@ io.on('connection', (socket) => {
       }
     });
     // BGMオブジェクトの作成
-const bgm = new Audio('bgm.mp3'); // ファイル名に合わせて変更してね
+const bgm = new Audio('New_Breath.mp3'); // ファイル名に合わせて変更してね
 bgm.loop = true; // ループ再生
 
 // PLAYボタンなどを押したタイミングで再生をスタートする
