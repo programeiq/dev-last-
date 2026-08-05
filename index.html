@@ -131,6 +131,27 @@
       margin-top: 15px; background: #FF7675; color: white; border: none; padding: 10px; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; text-align: center;
     }
 
+    /* ランキングテーブル表示用CSS */
+    .ranking-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 5px;
+    }
+    .ranking-table th, .ranking-table td {
+      padding: 8px 10px;
+      text-align: center;
+      border-bottom: 1px solid #EEE;
+      font-size: 14px;
+    }
+    .ranking-table th {
+      background-color: #31A07B;
+      color: white;
+      font-weight: bold;
+    }
+    .ranking-table tr:nth-child(even) {
+      background-color: #F9F9F9;
+    }
+
     /* VSマッチング画面 */
     #vs-match-screen { flex-direction: column; align-items: center; justify-content: center; width: 100vw; height: 100vh; background-color: #31A87B; }
     .vs-match-box { background-color: #A0A0A0; border: 6px solid #FFFFFF; border-radius: 20px; width: 90%; max-width: 800px; padding: 40px 20px; display: flex; justify-content: space-around; align-items: center; box-shadow: 0 15px 30px rgba(0,0,0,0.3); position: relative; }
@@ -205,7 +226,7 @@
     </div>
   </div>
 
-  <!-- ポップアップ：汎用モーダル（結果発表 / 通知 / キック / BAN 用） -->
+  <!-- ポップアップ：汎用モーダル -->
   <div id="notice-modal" class="modal-overlay">
     <div class="modal-content">
       <div id="notice-modal-header" class="modal-header">お知らせ</div>
@@ -214,11 +235,11 @@
     </div>
   </div>
 
-  <!-- ポップアップ：ランキング画面 -->
+  <!-- ポップアップ：ランキング画面（本物のリアルタイムデータを表示） -->
   <div id="ranking-modal" class="modal-overlay">
     <div class="modal-content">
-      <div class="modal-header">殿堂入りランキング</div>
-      <div id="ranking-modal-body" class="modal-body">読み込み中...</div>
+      <div class="modal-header">リアルタイム勝利数ランキング</div>
+      <div id="ranking-modal-body" class="modal-body">データ読み込み中...</div>
       <button class="modal-close-btn" onclick="closeModal('ranking-modal')">閉じる</button>
     </div>
   </div>
@@ -237,7 +258,6 @@
 
 【禁止事項】
 ・暴言や不適切なNGワードを送信すると「即時キック（部屋強制退室）」となります。
-・警告が3回に達すると「BAN（アカウント停止）」になりますのでご注意ください。
       </div>
       <button class="modal-close-btn" onclick="closeModal('rule-modal')">閉じる</button>
     </div>
@@ -343,7 +363,6 @@
         img.style.display = 'block';
         document.getElementById('fallback-text').style.display = 'none';
 
-        // VS画面にも反映
         document.getElementById('match-my-icon-slot').innerHTML = `<img src="${evt.target.result}" style="width:100%;height:100%;object-fit:cover;">`;
       };
       reader.readAsDataURL(file);
@@ -354,7 +373,59 @@
     alert("称号機能は今後のアップデートで追加されます！");
   }
 
-  // --- モーダル制御 ---
+  // --- モーダル & 本物のランキング取得処理 ---
+  function openRankingModal() {
+    const body = document.getElementById('ranking-modal-body');
+    body.innerText = "最新データを読み込み中...";
+    document.getElementById('ranking-modal').style.display = 'flex';
+
+    // サーバーに最新ランキングを問い合わせ
+    socket.emit('get_ranking');
+  }
+
+  // サーバーからリアルタイムランキングを受信
+  socket.on('ranking_data', (rankingList) => {
+    const body = document.getElementById('ranking-modal-body');
+
+    if (!rankingList || rankingList.length === 0) {
+      body.innerHTML = "<p style='text-align:center;'>まだ対戦データがありません。<br>対戦をして1位を目指そう！</p>";
+      return;
+    }
+
+    let html = `
+      <table class="ranking-table">
+        <thead>
+          <tr>
+            <th>順位</th>
+            <th>プレイヤー名</th>
+            <th>勝利数</th>
+            <th>勝率</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    rankingList.forEach((item, index) => {
+      const rank = index + 1;
+      let medal = rank;
+      if (rank === 1) medal = "🥇 1位";
+      else if (rank === 2) medal = "🥈 2位";
+      else if (rank === 3) medal = "🥉 3位";
+
+      html += `
+        <tr>
+          <td><b>${medal}</b></td>
+          <td>${item.name}</td>
+          <td><b>${item.wins}勝</b></td>
+          <td>${item.winRate}%</td>
+        </tr>
+      `;
+    });
+
+    html += `</tbody></table>`;
+    body.innerHTML = html;
+  });
+
   function showNoticeModal(title, text) {
     document.getElementById('notice-modal-header').innerText = title;
     document.getElementById('notice-modal-body').innerText = text;
@@ -363,11 +434,6 @@
 
   function openRuleModal() {
     document.getElementById('rule-modal').style.display = 'flex';
-  }
-
-  function openRankingModal() {
-    document.getElementById('ranking-modal-body').innerText = "1位: レスバキング (勝率 98%)\n2位: ひろゆき風Bot (勝率 85%)\n3位: 議論好きのタナカ (勝率 72%)";
-    document.getElementById('ranking-modal').style.display = 'flex';
   }
 
   function closeModal(id) {
@@ -385,10 +451,10 @@
 
   function goBackToMenu() {
     showScreen('menu-screen');
-    window.location.reload(); // マッチ待ちキャンセルのため再読み込み
+    window.location.reload();
   }
 
-  // --- Socket.io イベント受信設定 (1回だけ登録) ---
+  // Socket: マッチング成立
   socket.on('match_found', (data) => {
     myId = socket.id;
     currentRoomId = data.roomId;
@@ -480,18 +546,10 @@
     }
   }
 
-  // キック / BAN / 勝敗通知
+  // キック / 勝敗通知
   socket.on('kicked_notification', (data) => {
     showScreen('menu-screen');
-    showNoticeModal(
-      data.isBanned ? "🚫 BAN（アカウント停止）" : "⚠️ キック（強制退室）",
-      data.reason
-    );
-  });
-
-  socket.on('banned_notification', (data) => {
-    showScreen('menu-screen');
-    showNoticeModal("🚫 アクセス拒否", data.reason);
+    showNoticeModal("⚠️ キック（強制退室）", data.reason);
   });
 
   socket.on('game_over', (data) => {
@@ -503,9 +561,6 @@
     if (data.reason === "OPPONENT_KICKED") {
       title = "🎉 不戦勝！";
       message = "相手プレイヤーが暴言（NGワード）によりキックされたため、あなたの勝利です！";
-    } else if (data.reason === "OPPONENT_BANNED") {
-      title = "🎉 不戦勝！";
-      message = "相手プレイヤーがBANされたため、あなたの勝利です！";
     } else if (data.reason === "SURRENDER") {
       title = "試合決着";
       message = `勝者: ${data.winnerName}\n（降参により決着）`;
