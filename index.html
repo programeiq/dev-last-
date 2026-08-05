@@ -23,12 +23,19 @@
       overflow: hidden;
     }
 
+    /* 画面切り替え用の統一非表示スタイル */
+    .screen {
+      display: none !important;
+    }
+    .screen.active {
+      display: flex !important;
+    }
+
     #menu-screen {
       position: relative;
       width: 90%;
       max-width: 1000px;
       height: 550px;
-      display: flex;
       flex-direction: column;
       justify-content: space-between;
       align-items: center;
@@ -125,7 +132,7 @@
     }
 
     /* VSマッチング画面 */
-    #vs-match-screen { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100vw; height: 100vh; background-color: #31A87B; }
+    #vs-match-screen { flex-direction: column; align-items: center; justify-content: center; width: 100vw; height: 100vh; background-color: #31A87B; }
     .vs-match-box { background-color: #A0A0A0; border: 6px solid #FFFFFF; border-radius: 20px; width: 90%; max-width: 800px; padding: 40px 20px; display: flex; justify-content: space-around; align-items: center; box-shadow: 0 15px 30px rgba(0,0,0,0.3); position: relative; }
     #match-countdown-banner { position: absolute; top: -60px; background-color: #FF7675; color: white; padding: 10px 30px; border-radius: 30px; font-size: 22px; font-weight: bold; border: 3px solid #FFFFFF; box-shadow: 0 5px 15px rgba(0,0,0,0.2); white-space: nowrap; }
     .match-player-slot { display: flex; flex-direction: column; align-items: center; width: 40%; }
@@ -136,7 +143,7 @@
     .match-center-vs { font-size: 60px; font-weight: 900; color: #FFF385; text-shadow: 4px 4px 0px #333; font-style: italic; }
 
     /* バトル画面 */
-    #debate-screen { display: none; flex-direction: column; align-items: center; width: 95%; max-width: 700px; height: 85vh; border: 4px solid #FFFFFF; border-radius: 25px; background-color: #0d2b21; padding: 20px; box-shadow: 0 12px 24px rgba(0,0,0,0.15); }
+    #debate-screen { flex-direction: column; align-items: center; width: 95%; max-width: 700px; height: 85vh; border: 4px solid #FFFFFF; border-radius: 25px; background-color: #0d2b21; padding: 20px; box-shadow: 0 12px 24px rgba(0,0,0,0.15); }
     #theme-info { width: 100%; background-color: #FF7675; border: 3px solid #FFFFFF; border-radius: 15px; padding: 12px; text-align: center; color: white; font-weight: bold; margin-bottom: 10px; }
     #timer-panel { width: 100%; display: flex; justify-content: space-between; margin-bottom: 10px; gap: 10px; }
     .time-sub-box { flex: 1; text-align: center; font-size: 14px; font-weight: bold; padding: 8px; border-radius: 10px; border: 2px solid #FFFFFF; transition: background-color 0.2s; }
@@ -166,7 +173,7 @@
 <body>
 
   <!-- メニュー画面 -->
-  <div id="menu-screen">
+  <div id="menu-screen" class="screen active">
     <div id="user-profile-area">
       <div id="user-icon-slot" onclick="triggerImageUpload()" title="クリックして写真をアップロード！">
         <img id="custom-icon-img" style="display:none;" alt="ユーザーアイコン">
@@ -237,7 +244,7 @@
   </div>
 
   <!-- VSマッチング画面 -->
-  <div id="vs-match-screen">
+  <div id="vs-match-screen" class="screen">
     <div class="vs-match-box">
       <div id="match-countdown-banner">相手を探しています...</div>
 
@@ -261,7 +268,7 @@
   </div>
 
   <!-- バトル画面 -->
-  <div id="debate-screen">
+  <div id="debate-screen" class="screen">
     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 10px;">
       <div id="room-title" style="font-size: 14px; font-weight: bold; color: #FFFFFF;">ONLINE BATTLE</div>
       <button class="btn-back" onclick="surrenderGame()">降参</button>
@@ -306,10 +313,11 @@
   let isTyping = false;
   let typingTimeout = null;
 
-  // --- 画面要素 ---
-  const menuScreen = document.getElementById('menu-screen');
-  const vsMatchScreen = document.getElementById('vs-match-screen');
-  const debateScreen = document.getElementById('debate-screen');
+  // --- 画面切替ヘルパー関数 ---
+  function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+    document.getElementById(screenId).classList.add('active');
+  }
 
   // --- メニュー機能 ---
   function changeName() {
@@ -370,17 +378,17 @@
   function startMatching() {
     socket.emit('join_match', { name: userName, level: 1 });
     
-    menuScreen.style.display = 'none';
-    vsMatchScreen.style.display = 'flex';
+    showScreen('vs-match-screen');
     document.getElementById('match-countdown-banner').innerText = "相手を探しています...";
     document.getElementById('match-enemy-info-bar').innerText = "WAITING...";
   }
 
   function goBackToMenu() {
-    window.location.reload(); // 簡易キャンセルのためリロード
+    showScreen('menu-screen');
+    window.location.reload(); // マッチ待ちキャンセルのため再読み込み
   }
 
-  // Socket: マッチング成立
+  // --- Socket.io イベント受信設定 (1回だけ登録) ---
   socket.on('match_found', (data) => {
     myId = socket.id;
     currentRoomId = data.roomId;
@@ -389,17 +397,16 @@
     document.getElementById('match-enemy-info-bar').innerText = `${data.opponentName} (Lv.${data.opponentLevel})`;
 
     setTimeout(() => {
-      vsMatchScreen.style.display = 'none';
-      debateScreen.style.display = 'flex';
+      showScreen('debate-screen');
       document.getElementById('chat-box').innerHTML = '';
 
       document.getElementById('current-theme').innerText = `お題: ${data.theme}\n【あなたの立場: ${data.yourSide}】`;
       document.getElementById('my-hp-label').innerText = `あなた (${data.yourSide}): 10000`;
       document.getElementById('enemy-hp-label').innerText = `相手 (${data.opponentSide}): 10000`;
-    }, 1500);
+    }, 1200);
   });
 
-  // --- バトル・チャット処理 ---
+  // チャット入力イベント
   const msgInput = document.getElementById('message-input');
   msgInput.addEventListener('input', () => {
     if (!isTyping) {
@@ -426,7 +433,7 @@
     isTyping = false;
   }
 
-  // Socket: メッセージ受信
+  // メッセージ受信
   socket.on('receive_message', (data) => {
     const chatBox = document.getElementById('chat-box');
     const isMe = data.senderId === myId;
@@ -445,7 +452,7 @@
     updatePlayersUI(data.players);
   });
 
-  // Socket: HP・時間の毎秒同期
+  // HP・時間の毎秒同期
   socket.on('tick_status', (data) => {
     document.getElementById('time-left-num').innerText = data.timeLeft;
     updatePlayersUI(data.players);
@@ -473,10 +480,9 @@
     }
   }
 
-  // --- キック / BAN / 勝敗受信 ---
+  // キック / BAN / 勝敗通知
   socket.on('kicked_notification', (data) => {
-    debateScreen.style.display = 'none';
-    menuScreen.style.display = 'flex';
+    showScreen('menu-screen');
     showNoticeModal(
       data.isBanned ? "🚫 BAN（アカウント停止）" : "⚠️ キック（強制退室）",
       data.reason
@@ -484,14 +490,12 @@
   });
 
   socket.on('banned_notification', (data) => {
-    vsMatchScreen.style.display = 'none';
-    menuScreen.style.display = 'flex';
+    showScreen('menu-screen');
     showNoticeModal("🚫 アクセス拒否", data.reason);
   });
 
   socket.on('game_over', (data) => {
-    debateScreen.style.display = 'none';
-    menuScreen.style.display = 'flex';
+    showScreen('menu-screen');
 
     let title = "試合終了";
     let message = "";
