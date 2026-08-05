@@ -338,12 +338,17 @@
   }
 
   function changeName() {
+    function changeName() {
     const input = prompt("新しいプレイヤー名を入力してください（10文字以内）:", userName);
     if (input && input.trim() !== "") {
       userName = input.trim().substring(0, 10);
       document.getElementById('player-name-disp').innerText = userName;
       document.getElementById('match-my-info-bar').innerText = `Lv.1 ${userName}`;
+
+      // ★ サーバー側に名前変更を通知して即座に反映させるだみョン！
+      socket.emit('update_name', { name: userName });
     }
+  }
   }
 
   function triggerImageUpload() {
