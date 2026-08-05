@@ -11,7 +11,7 @@ app.use(express.static(__dirname));
 // データ保持用
 let waitingPlayer = null;
 const rooms = {};
-const userStats = {}; // { userName: { wins: number, games: number } }
+const userStats = {}; // { userName: { wins: number } }
 
 // NGワードリスト（サンプル）
 const ngWords = ["死ね", "殺す", "バカ", "アホ", "キチガイ"];
@@ -34,7 +34,7 @@ io.on('connection', (socket) => {
 
     // ユーザー統計初期化
     if (!userStats[userName]) {
-      userStats[userName] = { wins: 0, games: 0 };
+      userStats[userName] = { wins: 0 };
     }
 
     if (waitingPlayer && waitingPlayer.id !== socket.id) {
@@ -97,17 +97,15 @@ io.on('connection', (socket) => {
     // NGワード判定
     const hasNgWord = ngWords.some(word => msg.includes(word));
     if (hasNgWord) {
-      // キック処理
       socket.emit('kicked_notification', {
         isBanned: false,
         reason: "不適切・暴言NGワードが検知されたためキックされました。"
       });
 
-      // 相手の勝ち確定処理
       const opponentId = Object.keys(room.players).find(id => id !== socket.id);
       const winnerName = room.players[opponentId] ? room.players[opponentId].name : "相手";
 
-      recordWin(winnerName, player.name);
+      recordWin(winnerName);
       endGame(data.roomId, winnerName, "OPPONENT_KICKED");
       return;
     }
@@ -129,7 +127,7 @@ io.on('connection', (socket) => {
 
     // HPゼロ判定
     if (opponentId && room.players[opponentId].hp <= 0) {
-      recordWin(player.name, room.players[opponentId].name);
+      recordWin(player.name);
       endGame(data.roomId, player.name, "HP_ZERO");
     }
   });
@@ -149,25 +147,19 @@ io.on('connection', (socket) => {
 
     const opponentId = Object.keys(room.players).find(id => id !== socket.id);
     const winnerName = room.players[opponentId] ? room.players[opponentId].name : "相手";
-    const loserName = room.players[socket.id] ? room.players[socket.id].name : "あなた";
 
-    recordWin(winnerName, loserName);
+    recordWin(winnerName);
     endGame(data.roomId, winnerName, "SURRENDER");
   });
 
-  // 5. 本物のランキングデータ取得リクエスト
+  // 5. ランキングデータ取得（勝利数のみ）
   socket.on('get_ranking', () => {
-    // 勝利数順にソートしてTOP 10を抽出
     const rankingList = Object.keys(userStats)
       .map(name => ({
         name,
-        wins: userStats[name].wins,
-        games: userStats[name].games,
-        winRate: userStats[name].games > 0 
-          ? Math.round((userStats[name].wins / userStats[name].games) * 100) 
-          : 0
+        wins: userStats[name].wins
       }))
-      .sort((a, b) => b.wins - a.wins || b.winRate - a.winRate)
+      .sort((a, b) => b.wins - a.wins)
       .slice(0, 10);
 
     socket.emit('ranking_data', rankingList);
@@ -181,7 +173,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// タイマーと自然HP減算
 function startRoomTimer(roomId) {
   const room = rooms[roomId];
   if (!room) return;
@@ -189,7 +180,6 @@ function startRoomTimer(roomId) {
   room.timer = setInterval(() => {
     room.timeLeft -= 1;
 
-    // 入力していないプレイヤーは毎秒1 HP減少
     Object.keys(room.players).forEach(pId => {
       const p = room.players[pId];
       if (!p.isTyping) {
@@ -197,13 +187,11 @@ function startRoomTimer(roomId) {
       }
     });
 
-    // 状態送信
     io.to(roomId).emit('tick_status', {
       timeLeft: room.timeLeft,
       players: room.players
     });
 
-    // HPチェック
     const pIds = Object.keys(room.players);
     if (pIds.length === 2) {
       const p1 = room.players[pIds[0]];
@@ -213,17 +201,16 @@ function startRoomTimer(roomId) {
         let winnerName = "DRAW";
         if (p1.hp > p2.hp) {
           winnerName = p1.name;
-          recordWin(p1.name, p2.name);
+          recordWin(p1.name);
         } else if (p2.hp > p1.hp) {
           winnerName = p2.name;
-          recordWin(p2.name, p1.name);
+          recordWin(p2.name);
         }
         endGame(roomId, winnerName, "HP_ZERO");
         return;
       }
     }
 
-    // タイムアップ判定
     if (room.timeLeft <= 0) {
       const p1 = room.players[pIds[0]];
       const p2 = room.players[pIds[1]];
@@ -232,10 +219,10 @@ function startRoomTimer(roomId) {
       if (p1 && p2) {
         if (p1.hp > p2.hp) {
           winnerName = p1.name;
-          recordWin(p1.name, p2.name);
+          recordWin(p1.name);
         } else if (p2.hp > p1.hp) {
           winnerName = p2.name;
-          recordWin(p2.name, p1.name);
+          recordWin(p2.name);
         }
       }
       endGame(roomId, winnerName, "TIME_UP");
@@ -243,19 +230,13 @@ function startRoomTimer(roomId) {
   }, 1000);
 }
 
-// 勝敗記録更新
-function recordWin(winnerName, loserName) {
+function recordWin(winnerName) {
   if (winnerName && winnerName !== "DRAW") {
-    if (!userStats[winnerName]) userStats[winnerName] = { wins: 0, games: 0 };
+    if (!userStats[winnerName]) userStats[winnerName] = { wins: 0 };
     userStats[winnerName].wins += 1;
-    userStats[winnerName].games += 1;
-  }
-  if (loserName && userStats[loserName]) {
-    userStats[loserName].games += 1;
   }
 }
 
-// 試合終了処理
 function endGame(roomId, winnerName, reason) {
   const room = rooms[roomId];
   if (!room) return;
