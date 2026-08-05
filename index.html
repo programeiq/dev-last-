@@ -23,7 +23,6 @@
       overflow: hidden;
     }
 
-    /* 画面切り替え用の統一非表示スタイル */
     .screen {
       display: none !important;
     }
@@ -131,17 +130,17 @@
       margin-top: 15px; background: #FF7675; color: white; border: none; padding: 10px; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; text-align: center;
     }
 
-    /* ランキングテーブル表示用CSS */
+    /* 勝利数ランキング専用テーブル */
     .ranking-table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 5px;
     }
     .ranking-table th, .ranking-table td {
-      padding: 8px 10px;
+      padding: 10px 15px;
       text-align: center;
       border-bottom: 1px solid #EEE;
-      font-size: 14px;
+      font-size: 15px;
     }
     .ranking-table th {
       background-color: #31A07B;
@@ -235,10 +234,10 @@
     </div>
   </div>
 
-  <!-- ポップアップ：ランキング画面（本物のリアルタイムデータを表示） -->
+  <!-- ポップアップ：勝利数ランキング画面 -->
   <div id="ranking-modal" class="modal-overlay">
     <div class="modal-content">
-      <div class="modal-header">リアルタイム勝利数ランキング</div>
+      <div class="modal-header">勝利数ランキング</div>
       <div id="ranking-modal-body" class="modal-body">データ読み込み中...</div>
       <button class="modal-close-btn" onclick="closeModal('ranking-modal')">閉じる</button>
     </div>
@@ -333,13 +332,11 @@
   let isTyping = false;
   let typingTimeout = null;
 
-  // --- 画面切替ヘルパー関数 ---
   function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
     document.getElementById(screenId).classList.add('active');
   }
 
-  // --- メニュー機能 ---
   function changeName() {
     const input = prompt("新しいプレイヤー名を入力してください（10文字以内）:", userName);
     if (input && input.trim() !== "") {
@@ -373,22 +370,20 @@
     alert("称号機能は今後のアップデートで追加されます！");
   }
 
-  // --- モーダル & 本物のランキング取得処理 ---
+  // --- 勝利数ランキング取得処理 ---
   function openRankingModal() {
     const body = document.getElementById('ranking-modal-body');
     body.innerText = "最新データを読み込み中...";
     document.getElementById('ranking-modal').style.display = 'flex';
 
-    // サーバーに最新ランキングを問い合わせ
     socket.emit('get_ranking');
   }
 
-  // サーバーからリアルタイムランキングを受信
   socket.on('ranking_data', (rankingList) => {
     const body = document.getElementById('ranking-modal-body');
 
     if (!rankingList || rankingList.length === 0) {
-      body.innerHTML = "<p style='text-align:center;'>まだ対戦データがありません。<br>対戦をして1位を目指そう！</p>";
+      body.innerHTML = "<p style='text-align:center;'>まだ勝利記録がありません。<br>勝利して1位を目指そう！</p>";
       return;
     }
 
@@ -399,7 +394,6 @@
             <th>順位</th>
             <th>プレイヤー名</th>
             <th>勝利数</th>
-            <th>勝率</th>
           </tr>
         </thead>
         <tbody>
@@ -416,8 +410,7 @@
         <tr>
           <td><b>${medal}</b></td>
           <td>${item.name}</td>
-          <td><b>${item.wins}勝</b></td>
-          <td>${item.winRate}%</td>
+          <td><b>${item.wins} 勝</b></td>
         </tr>
       `;
     });
@@ -440,7 +433,6 @@
     document.getElementById(id).style.display = 'none';
   }
 
-  // --- マッチング処理 ---
   function startMatching() {
     socket.emit('join_match', { name: userName, level: 1 });
     
@@ -454,7 +446,6 @@
     window.location.reload();
   }
 
-  // Socket: マッチング成立
   socket.on('match_found', (data) => {
     myId = socket.id;
     currentRoomId = data.roomId;
@@ -472,7 +463,6 @@
     }, 1200);
   });
 
-  // チャット入力イベント
   const msgInput = document.getElementById('message-input');
   msgInput.addEventListener('input', () => {
     if (!isTyping) {
@@ -499,7 +489,6 @@
     isTyping = false;
   }
 
-  // メッセージ受信
   socket.on('receive_message', (data) => {
     const chatBox = document.getElementById('chat-box');
     const isMe = data.senderId === myId;
@@ -518,7 +507,6 @@
     updatePlayersUI(data.players);
   });
 
-  // HP・時間の毎秒同期
   socket.on('tick_status', (data) => {
     document.getElementById('time-left-num').innerText = data.timeLeft;
     updatePlayersUI(data.players);
@@ -546,7 +534,6 @@
     }
   }
 
-  // キック / 勝敗通知
   socket.on('kicked_notification', (data) => {
     showScreen('menu-screen');
     showNoticeModal("⚠️ キック（強制退室）", data.reason);
