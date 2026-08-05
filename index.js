@@ -11,9 +11,12 @@ app.use(express.static(__dirname));
 // データ保持用
 let waitingPlayer = null;
 const rooms = {};
-const userStats = {}; // { userName: { wins: number } }
 
-// NGワードリスト（サンプル）
+// ★ socket.id ごとに名前と勝利数を管理する構造に変更だみョン！
+// { socketId: { name: string, wins: number } }
+const userStats = {};
+
+// NGワードリスト
 const ngWords = ["死ね", "殺す", "バカ", "アホ", "キチガイ"];
 
 // お題リスト
@@ -27,14 +30,20 @@ const themes = [
 io.on('connection', (socket) => {
   console.log(`ユーザー接続: ${socket.id}`);
 
+  // ★ 接続時にIDベースでデータ初期化
+  userStats[socket.id] = {
+    name: "名無し",
+    wins: 0
+  };
+
   // 1. マッチング処理
   socket.on('join_match', (data) => {
     const userName = data.name || "名無し";
     socket.userName = userName;
 
-    // ユーザー統計初期化
-    if (!userStats[userName]) {
-      userStats[userName] = { wins: 0 };
+    // 最新のプレイヤー名を登録
+    if (userStats[socket.id]) {
+      userStats[socket.id].name = userName;
     }
 
     if (waitingPlayer && waitingPlayer.id !== socket.id) {
@@ -54,8 +63,8 @@ io.on('connection', (socket) => {
         timeLeft: 180,
         timer: null,
         players: {
-          [player1.id]: { name: player1.userName, side: "論者A", hp: 10000, isTyping: false },
-          [player2.id]: { name: player2.userName, side: "論者B", hp: 10000, isTyping: false }
+          [player1.id]: { id: player1.id, name: player1.userName, side: "論者A", hp: 10000, isTyping: false },
+          [player2.id]: { id: player2.id, name: player2.userName, side: "論者B", hp: 10000, isTyping: false }
         }
       };
 
@@ -103,9 +112,10 @@ io.on('connection', (socket) => {
       });
 
       const opponentId = Object.keys(room.players).find(id => id !== socket.id);
-      const winnerName = room.players[opponentId] ? room.players[opponentId].name : "相手";
+      const winnerId = opponentId;
 
-      recordWin(winnerName);
+      recordWin(winnerId);
+      const winnerName = room.players[winnerId] ? room.players[winnerId].name : "相手";
       endGame(data.roomId, winnerName, "OPPONENT_KICKED");
       return;
     }
@@ -127,7 +137,7 @@ io.on('connection', (socket) => {
 
     // HPゼロ判定
     if (opponentId && room.players[opponentId].hp <= 0) {
-      recordWin(player.name);
+      recordWin(socket.id);
       endGame(data.roomId, player.name, "HP_ZERO");
     }
   });
@@ -148,17 +158,20 @@ io.on('connection', (socket) => {
     const opponentId = Object.keys(room.players).find(id => id !== socket.id);
     const winnerName = room.players[opponentId] ? room.players[opponentId].name : "相手";
 
-    recordWin(winnerName);
+    if (opponentId) {
+      recordWin(opponentId);
+    }
     endGame(data.roomId, winnerName, "SURRENDER");
   });
 
-  // 5. ランキングデータ取得（勝利数のみ）
+  // 5. ランキングデータ取得（個別のIDごとに勝利数をソートだみョン！）
   socket.on('get_ranking', () => {
     const rankingList = Object.keys(userStats)
-      .map(name => ({
-        name,
-        wins: userStats[name].wins
+      .map(id => ({
+        name: userStats[id].name,
+        wins: userStats[id].wins
       }))
+      .filter(item => item.wins > 0) // 勝利数1以上の人のみ掲載
       .sort((a, b) => b.wins - a.wins)
       .slice(0, 10);
 
@@ -170,6 +183,7 @@ io.on('connection', (socket) => {
     if (waitingPlayer && waitingPlayer.id === socket.id) {
       waitingPlayer = null;
     }
+    // メモリ保護のため、切断時にデータ削除する場合はここ（今回は対戦中復帰等の利便性のためそのまま残しています）
   });
 });
 
@@ -201,10 +215,10 @@ function startRoomTimer(roomId) {
         let winnerName = "DRAW";
         if (p1.hp > p2.hp) {
           winnerName = p1.name;
-          recordWin(p1.name);
+          recordWin(p1.id);
         } else if (p2.hp > p1.hp) {
           winnerName = p2.name;
-          recordWin(p2.name);
+          recordWin(p2.id);
         }
         endGame(roomId, winnerName, "HP_ZERO");
         return;
@@ -219,10 +233,10 @@ function startRoomTimer(roomId) {
       if (p1 && p2) {
         if (p1.hp > p2.hp) {
           winnerName = p1.name;
-          recordWin(p1.name);
+          recordWin(p1.id);
         } else if (p2.hp > p1.hp) {
           winnerName = p2.name;
-          recordWin(p2.name);
+          recordWin(p2.id);
         }
       }
       endGame(roomId, winnerName, "TIME_UP");
@@ -230,10 +244,10 @@ function startRoomTimer(roomId) {
   }, 1000);
 }
 
-function recordWin(winnerName) {
-  if (winnerName && winnerName !== "DRAW") {
-    if (!userStats[winnerName]) userStats[winnerName] = { wins: 0 };
-    userStats[winnerName].wins += 1;
+// ★ socketId ベースで勝利数をカウント！
+function recordWin(socketId) {
+  if (socketId && userStats[socketId]) {
+    userStats[socketId].wins += 1;
   }
 }
 
