@@ -3,353 +3,404 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ゆる論 - オンラインレスババトル</title>
+  <title>ゆるろん</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    * {
+    *, *::before, *::after {
       box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Helvetica Neue', Arial, sans-serif;
     }
 
     body {
-      background-color: #f0f2f5;
+      background-color: #31A87B;
+      color: #333333;
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', sans-serif;
       display: flex;
-      justify-content: center;
+      flex-direction: column;
       align-items: center;
-      min-height: 100vh;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      overflow: hidden;
     }
 
-    #app {
-      width: 100%;
+    #menu-screen {
+      position: relative;
+      width: 90%;
+      max-width: 1000px;
+      height: 550px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px;
+    }
+
+    #user-profile-area {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      background: rgba(255, 255, 255, 0.2);
+      padding: 10px 20px;
+      border-radius: 50px;
+      border: 2px solid #7AD6B8;
+      color: #7AD6B8;
+    }
+
+    #user-icon-slot {
+      width: 60px;
+      height: 60px;
+      background-color: #FFFFFF;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      transition: transform 0.1s;
+      border: 2px solid #FFFFFF;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+    #user-icon-slot:hover { transform: scale(1.05); }
+    #custom-icon-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    #fallback-text { font-size: 11px; font-weight: bold; color: #31A07B; text-align: center; line-height: 1.2; }
+    #icon-file-input { display: none; }
+
+    #user-info-text { display: flex; flex-direction: column; }
+    #game-title { font-size: 22px; font-weight: bold; margin: 0; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
+    #user-badge { font-size: 13px; font-weight: bold; opacity: 0.9; }
+    #icon-item-label { font-size: 11px; background: #FFFFFF; color: #31A07B; padding: 2px 8px; border-radius: 10px; font-weight: bold; margin-top: 4px; width: fit-content; cursor: pointer; }
+
+    .right-menu-container { position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column; gap: 12px; z-index: 10; }
+
+    .side-btn {
+      width: 70px; height: 70px; border-radius: 50%; border: 3px solid #FFFFFF; font-weight: bold; font-size: 13px; cursor: pointer; transition: all 0.1s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.15); outline: none; display: flex; align-items: center; justify-content: center;
+    }
+    .side-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 8px rgba(0,0,0,0.2); }
+    .btn-settings { background-color: #7ad6b8; color: white; }
+    .btn-ranking { background-color: #7ad6b8; color: #333333; border-color: #333333; }
+    .btn-rule { background-color: #7ad6b8; color: white; }
+
+    #vs-logo-container { flex: 1; display: flex; align-items: center; justify-content: center; margin-top: 40px; }
+    .vs-bubble { position: relative; width: 180px; height: 180px; background: #FFFFFF; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 70px; font-weight: 900; color: #1f654e; box-shadow: 0 10px 20px rgba(0,0,0,0.15); }
+
+    #display-box { background: rgba(255, 255, 255, 0.9); border: 2px solid #FFFFFF; border-radius: 15px; padding: 15px 30px; font-size: 18px; font-weight: bold; text-align: center; white-space: pre-wrap; box-shadow: 0 6px 15px rgba(0,0,0,0.1); width: 60%; margin-bottom: 20px; }
+
+    .bottom-btn-container { width: 80%; max-width: 600px; margin-bottom: 10px; }
+    .btn-play { width: 100%; background-color: #FFFFFF; color: #00A2FF; border: 4px solid #FFFFFF; padding: 18px 0; font-size: 26px; font-weight: bold; cursor: pointer; border-radius: 20px; box-shadow: 0 6px 15px rgba(0,0,0,0.15); transition: all 0.2s ease; }
+    .btn-play:hover { background-color: #F0F8FF; transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+
+    /* モーダル画面 */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-content {
+      background: #FFFFFF;
+      border-radius: 20px;
+      width: 85%;
       max-width: 500px;
-      height: 100vh;
-      max-height: 800px;
-      background: #ffffff;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      max-height: 80vh;
+      padding: 25px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
       display: flex;
       flex-direction: column;
       position: relative;
-      overflow: hidden;
     }
-
-    /* タイトル画面 */
-    .screen {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      padding: 20px;
-      text-align: center;
+    .modal-header {
+      font-size: 22px; font-weight: bold; color: #31A07B; text-align: center; margin-bottom: 15px; border-bottom: 2px solid #31A07B; padding-bottom: 8px;
     }
-
-    .hidden {
-      display: none !important;
-    }
-
-    h1 {
-      font-size: 2.5rem;
-      color: #333;
-      margin-bottom: 20px;
-    }
-
-    input[type="text"] {
-      width: 80%;
-      padding: 12px;
-      margin-bottom: 15px;
-      border: 2px solid #ddd;
-      border-radius: 8px;
-      font-size: 1rem;
-      outline: none;
-    }
-
-    button {
-      width: 80%;
-      padding: 12px;
-      background-color: #4A90E2;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 1.1rem;
-      font-weight: bold;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-
-    button:hover {
-      background-color: #357ABD;
-    }
-
-    /* 対戦画面ヘッダー */
-    .game-header {
-      background: #333;
-      color: white;
-      padding: 15px;
-      text-align: center;
-    }
-
-    .theme-title {
-      font-size: 1.2rem;
-      font-weight: bold;
-      color: #FFD700;
-      margin-bottom: 5px;
-    }
-
-    .status-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 10px;
-    }
-
-    .player-card {
-      width: 45%;
-      background: #444;
-      padding: 8px;
-      border-radius: 6px;
-      font-size: 0.85rem;
-    }
-
-    .hp-bar-bg {
-      width: 100%;
-      height: 10px;
-      background: #666;
-      border-radius: 5px;
-      overflow: hidden;
-      margin-top: 5px;
-    }
-
-    .hp-bar-fill {
-      height: 100%;
-      background: #FF4D4D;
-      width: 100%;
-      transition: width 0.3s ease;
-    }
-
-    /* チャットエリア */
-    .chat-area {
-      flex: 1;
-      padding: 15px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      background: #e9ecef;
-    }
-
-    .message {
-      max-width: 75%;
-      padding: 10px 14px;
-      border-radius: 12px;
-      font-size: 0.95rem;
-      line-height: 1.4;
-      word-break: break-word;
-    }
-
-    .message.my-msg {
-      align-self: flex-end;
-      background-color: #4A90E2;
-      color: white;
-      border-bottom-right-radius: 2px;
-    }
-
-    .message.opp-msg {
-      align-self: flex-start;
-      background-color: #ffffff;
-      color: #333;
-      border-bottom-left-radius: 2px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-
-    .sender-name {
-      font-size: 0.75rem;
-      opacity: 0.8;
-      margin-bottom: 3px;
-    }
-
-    /* 入力エリア */
-    .input-area {
-      padding: 10px;
-      background: white;
-      display: flex;
-      gap: 8px;
-      border-top: 1px solid #ddd;
-    }
-
-    .input-area input {
-      flex: 1;
-      margin-bottom: 0;
-      width: auto;
-    }
-
-    .input-area button {
-      width: auto;
-      padding: 0 20px;
-    }
-
-    .btn-surrender {
-      background: #ff4d4d;
-      margin-left: 5px;
-      width: auto;
-      padding: 5px 10px;
-      font-size: 0.8rem;
-    }
-
-    /* オーバーレイモーダル（リザルト・BAN・キック） */
-    .modal-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.7);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 100;
-    }
-
-    .modal-box {
-      background: white;
-      width: 85%;
-      padding: 25px;
-      border-radius: 12px;
-      text-align: center;
-    }
-
-    .modal-title {
-      font-size: 1.5rem;
-      font-weight: bold;
-      margin-bottom: 10px;
-      color: #333;
-    }
-
     .modal-body {
-      font-size: 1rem;
-      color: #666;
-      margin-bottom: 20px;
-      white-space: pre-wrap;
+      overflow-y: auto; flex-grow: 1; font-size: 15px; line-height: 1.6; color: #444; white-space: pre-wrap;
     }
+    .modal-close-btn {
+      margin-top: 15px; background: #FF7675; color: white; border: none; padding: 10px; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; text-align: center;
+    }
+
+    /* VSマッチング画面 */
+    #vs-match-screen { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100vw; height: 100vh; background-color: #31A87B; }
+    .vs-match-box { background-color: #A0A0A0; border: 6px solid #FFFFFF; border-radius: 20px; width: 90%; max-width: 800px; padding: 40px 20px; display: flex; justify-content: space-around; align-items: center; box-shadow: 0 15px 30px rgba(0,0,0,0.3); position: relative; }
+    #match-countdown-banner { position: absolute; top: -60px; background-color: #FF7675; color: white; padding: 10px 30px; border-radius: 30px; font-size: 22px; font-weight: bold; border: 3px solid #FFFFFF; box-shadow: 0 5px 15px rgba(0,0,0,0.2); white-space: nowrap; }
+    .match-player-slot { display: flex; flex-direction: column; align-items: center; width: 40%; }
+    .match-icon-container { width: 200px; height: 200px; background-color: #8B5A2B; border: 4px solid #FFFFFF; box-shadow: 0 8px 16px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 20px; }
+    .match-icon-container img { width: 100%; height: 100%; object-fit: cover; }
+    .match-icon-fallback { color: #FFFFFF; font-size: 18px; font-weight: bold; text-align: center; }
+    .match-info-bar { width: 100%; background-color: #3A3A3A; color: #FFFFFF; text-align: center; padding: 12px 5px; font-size: 16px; font-weight: bold; border-radius: 5px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .match-center-vs { font-size: 60px; font-weight: 900; color: #FFF385; text-shadow: 4px 4px 0px #333; font-style: italic; }
+
+    /* バトル画面 */
+    #debate-screen { display: none; flex-direction: column; align-items: center; width: 95%; max-width: 700px; height: 85vh; border: 4px solid #FFFFFF; border-radius: 25px; background-color: #0d2b21; padding: 20px; box-shadow: 0 12px 24px rgba(0,0,0,0.15); }
+    #theme-info { width: 100%; background-color: #FF7675; border: 3px solid #FFFFFF; border-radius: 15px; padding: 12px; text-align: center; color: white; font-weight: bold; margin-bottom: 10px; }
+    #timer-panel { width: 100%; display: flex; justify-content: space-between; margin-bottom: 10px; gap: 10px; }
+    .time-sub-box { flex: 1; text-align: center; font-size: 14px; font-weight: bold; padding: 8px; border-radius: 10px; border: 2px solid #FFFFFF; transition: background-color 0.2s; }
+    #game-timer-box { background-color: #FFEAA7; color: #333333; }
+    #response-timer-box { background-color: #1DD1A1; color: white; }
+
+    #hp-container { width: 100%; background-color: rgba(0,0,0,0.2); border: 2px solid #FFFFFF; border-radius: 15px; padding: 12px; margin-bottom: 15px; color: white; font-size: 14px; font-weight: bold; }
+    .hp-bar-bg { width: 100%; background-color: #FFF; height: 18px; border-radius: 9px; overflow: hidden; margin-top: 5px; }
+    .hp-bar-fill { height: 100%; background-color: #1DD1A1; width: 100%; transition: width 0.3s ease; }
+
+    #chat-box { width: 100%; flex-grow: 1; overflow-y: auto; margin-bottom: 15px; padding: 15px; display: flex; flex-direction: column; background: rgba(255,255,255,0.9); border-radius: 20px; }
+    .message-row { display: flex; flex-direction: column; width: 100%; margin: 6px 0; }
+    .my-message { align-items: flex-end; }
+    .other-message { align-items: flex-start; }
+    .sender-name { font-size: 12px; color: #333333; font-weight: bold; margin-bottom: 2px; }
+
+    .bubble { max-width: 75%; padding: 12px 18px; border-radius: 18px; font-size: 16px; font-weight: bold; line-height: 1.4; word-wrap: break-word; }
+    .my-message .bubble { background-color: #1DD1A1; color: white; border-radius: 18px 18px 0px 18px; }
+    .other-message .bubble { background-color: #DFE4EA; color: #333333; border-radius: 18px 18px 18px 0px; }
+    
+    .chat-input-container { display: flex; width: 100%; gap: 10px; }
+    #message-input { flex-grow: 1; padding: 15px; font-size: 16px; border: 3px solid #FFFFFF; border-radius: 15px; outline: none; }
+    #send-btn { padding: 15px 30px; font-size: 16px; background-color: #FFD166; color: #333333; border: 3px solid #FFFFFF; border-radius: 15px; cursor: pointer; font-weight: bold; }
+    .btn-back { padding: 8px 18px; font-size: 14px; background-color: #FF7675; border-radius: 20px; border: 2px solid #FFFFFF; color: white; font-weight: bold; cursor: pointer;}
   </style>
 </head>
 <body>
 
-<div id="app">
-  <!-- 1. タイトル画面 -->
-  <div id="title-screen" class="screen">
-    <h1>ゆる論 💬</h1>
-    <input type="text" id="player-name" placeholder="プレイヤー名を入力" maxlength="10">
-    <button id="btn-search">対戦相手を探す</button>
+  <!-- メニュー画面 -->
+  <div id="menu-screen">
+    <div id="user-profile-area">
+      <div id="user-icon-slot" onclick="triggerImageUpload()" title="クリックして写真をアップロード！">
+        <img id="custom-icon-img" style="display:none;" alt="ユーザーアイコン">
+        <span id="fallback-text">写真<br>UP</span>
+      </div>
+      <input type="file" id="icon-file-input" accept="image/*" onchange="handleImageUpload(event)">
+
+      <div id="user-info-text">
+        <h1 id="game-title">ゆるろん</h1>
+        <div id="user-badge">プレイヤー: <span id="player-name-disp">名無し</span></div>
+        <div id="icon-item-label" onclick="openItemBox()" title="称号アイテムを変更する">初心者</div>
+      </div>
+    </div>
+
+    <div class="right-menu-container">
+      <button class="side-btn btn-settings" onclick="changeName()" title="名前を変更する">SET</button>
+      <button class="side-btn btn-ranking" onclick="openRankingModal()">RANK</button>
+      <button class="side-btn btn-rule" onclick="openRuleModal()">RULE</button>
+    </div>
+
+    <div id="vs-logo-container">
+      <div class="vs-bubble">VS</div>
+    </div>
+    
+    <div id="display-box">STATUS : READY</div>
+
+    <div class="bottom-btn-container">
+      <button class="btn-play" onclick="startMatching()">PLAY</button>
+    </div>
   </div>
 
-  <!-- 2. マッチング待機画面 -->
-  <div id="matching-screen" class="screen hidden">
-    <h2>🔍 対戦相手を検索中...</h2>
-    <p style="margin-top:15px; color:#666;">しばらくお待ちください</p>
+  <!-- ポップアップ：汎用モーダル（結果発表 / 通知 / キック / BAN 用） -->
+  <div id="notice-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div id="notice-modal-header" class="modal-header">お知らせ</div>
+      <div id="notice-modal-body" class="modal-body">---</div>
+      <button class="modal-close-btn" onclick="closeModal('notice-modal')">閉じる</button>
+    </div>
   </div>
 
-  <!-- 3. 対戦画面 -->
-  <div id="game-screen" class="screen hidden" style="padding:0;">
-    <div class="game-header">
-      <div class="theme-title" id="theme-title">お題: ---</div>
-      <div>残り時間: <span id="time-left">180</span>秒 <button class="btn-surrender" id="btn-surrender">降参</button></div>
-      
-      <div class="status-bar">
-        <!-- 自分 -->
-        <div class="player-card">
-          <div id="my-info">自分 (Lv.1)</div>
-          <div id="my-side" style="color:#aaa;">立場: ---</div>
-          <div class="hp-bar-bg"><div id="my-hp-bar" class="hp-bar-fill"></div></div>
-          <div>HP: <span id="my-hp">10000</span></div>
+  <!-- ポップアップ：ランキング画面 -->
+  <div id="ranking-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">殿堂入りランキング</div>
+      <div id="ranking-modal-body" class="modal-body">読み込み中...</div>
+      <button class="modal-close-btn" onclick="closeModal('ranking-modal')">閉じる</button>
+    </div>
+  </div>
+
+  <!-- ポップアップ：ルール説明画面 -->
+  <div id="rule-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">ゆるろんルール解説</div>
+      <div class="modal-body">
+【基本ルール】
+1. マッチングした相手と出されたお題でディベート！
+2. 双方HP「10000」からバトルがスタートします。
+3. 1秒ごとにHPが1ずつ自然減少していきます！
+  （文字を入力している間だけ減少がストップ！）
+4. 自分の意見を発言・送信すると「100ダメージ」が相手に与えられます！
+
+【禁止事項】
+・暴言や不適切なNGワードを送信すると「即時キック（部屋強制退室）」となります。
+・警告が3回に達すると「BAN（アカウント停止）」になりますのでご注意ください。
+      </div>
+      <button class="modal-close-btn" onclick="closeModal('rule-modal')">閉じる</button>
+    </div>
+  </div>
+
+  <!-- VSマッチング画面 -->
+  <div id="vs-match-screen">
+    <div class="vs-match-box">
+      <div id="match-countdown-banner">相手を探しています...</div>
+
+      <div class="match-player-slot">
+        <div class="match-icon-container" id="match-my-icon-slot">
+          <span class="match-icon-fallback" id="my-match-fallback">YOU</span>
         </div>
+        <div class="match-info-bar" id="match-my-info-bar">Lv.1 あなた</div>
+      </div>
 
-        <!-- 相手 -->
-        <div class="player-card">
-          <div id="opp-info">相手 (Lv.1)</div>
-          <div id="opp-side" style="color:#aaa;">立場: ---</div>
-          <div class="hp-bar-bg"><div id="opp-hp-bar" class="hp-bar-fill"></div></div>
-          <div>HP: <span id="opp-hp">10000</span></div>
+      <div class="match-center-vs">VS</div>
+
+      <div class="match-player-slot">
+        <div class="match-icon-container" id="match-enemy-icon-slot">
+          <span class="match-icon-fallback">WAITING...</span>
+        </div>
+        <div class="match-info-bar" id="match-enemy-info-bar">相手を待っています</div>
+      </div>
+    </div>
+    <button class="btn-back" style="margin-top: 20px;" onclick="goBackToMenu()">キャンセルして戻る</button>
+  </div>
+
+  <!-- バトル画面 -->
+  <div id="debate-screen">
+    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 10px;">
+      <div id="room-title" style="font-size: 14px; font-weight: bold; color: #FFFFFF;">ONLINE BATTLE</div>
+      <button class="btn-back" onclick="surrenderGame()">降参</button>
+    </div>
+
+    <div id="theme-info">
+      <div id="current-theme" style="font-size: 18px;">お題: 読み込み中...</div>
+    </div>
+
+    <div id="timer-panel">
+      <div id="game-timer-box" class="time-sub-box">試合残り: <span id="time-left-num">180</span>秒</div>
+      <div id="response-timer-box" class="time-sub-box">毎秒 -1 HP</div>
+    </div>
+
+    <div id="hp-container">
+      <div style="display: flex; justify-content: space-between;">
+        <div style="width: 46%;">
+          <div id="my-hp-label">あなた: 10000</div>
+          <div class="hp-bar-bg"><div id="my-hp-bar" class="hp-bar-fill"></div></div>
+        </div>
+        <div style="font-size: 16px; display: flex; align-items: center; color: #FFF385;">VS</div>
+        <div style="width: 46%; text-align: right;">
+          <div id="enemy-hp-label">相手: 10000</div>
+          <div class="hp-bar-bg"><div id="enemy-hp-bar" class="hp-bar-fill" style="background-color: #FF7675;"></div></div>
         </div>
       </div>
     </div>
 
-    <!-- チャットログ -->
-    <div class="chat-area" id="chat-area"></div>
-
-    <!-- メッセージ入力 -->
-    <div class="input-area">
-      <input type="text" id="msg-input" placeholder="意見を入力（送信で相手に100ダメージ）" maxlength="100">
-      <button id="btn-send">送信</button>
+    <div id="chat-box"></div>
+    <div class="chat-input-container">
+      <input type="text" id="message-input" placeholder="自分の意見を入力...">
+      <button id="send-btn" onclick="sendMessage()">送信</button>
     </div>
   </div>
-
-  <!-- 4. モーダル（勝敗・キック・BAN表示用） -->
-  <div id="modal" class="modal-overlay hidden">
-    <div class="modal-box">
-      <div class="modal-title" id="modal-title">結果発表</div>
-      <div class="modal-body" id="modal-body">---</div>
-      <button id="btn-modal-close">タイトルへ戻る</button>
-    </div>
-  </div>
-</div>
 
 <script>
   const socket = io();
 
   let myId = null;
   let currentRoomId = null;
+  let userName = "名無し";
   let isTyping = false;
   let typingTimeout = null;
 
-  // UI要素
-  const titleScreen = document.getElementById('title-screen');
-  const matchingScreen = document.getElementById('matching-screen');
-  const gameScreen = document.getElementById('game-screen');
-  const modal = document.getElementById('modal');
+  // --- 画面要素 ---
+  const menuScreen = document.getElementById('menu-screen');
+  const vsMatchScreen = document.getElementById('vs-match-screen');
+  const debateScreen = document.getElementById('debate-screen');
 
-  const playerNameInput = document.getElementById('player-name');
-  const btnSearch = document.getElementById('btn-search');
-  const btnSend = document.getElementById('btn-send');
-  const msgInput = document.getElementById('msg-input');
-  const btnSurrender = document.getElementById('btn-surrender');
-  const btnModalClose = document.getElementById('btn-modal-close');
+  // --- メニュー機能 ---
+  function changeName() {
+    const input = prompt("新しいプレイヤー名を入力してください（10文字以内）:", userName);
+    if (input && input.trim() !== "") {
+      userName = input.trim().substring(0, 10);
+      document.getElementById('player-name-disp').innerText = userName;
+      document.getElementById('match-my-info-bar').innerText = `Lv.1 ${userName}`;
+    }
+  }
 
-  const chatArea = document.getElementById('chat-area');
+  function triggerImageUpload() {
+    document.getElementById('icon-file-input').click();
+  }
 
-  // ==========================================
-  // 1. マッチング開始
-  // ==========================================
-  btnSearch.addEventListener('click', () => {
-    const name = playerNameInput.value.trim() || "名無し";
-    socket.emit('join_match', { name: name, level: 1 });
+  function handleImageUpload(e) {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const img = document.getElementById('custom-icon-img');
+        img.src = evt.target.result;
+        img.style.display = 'block';
+        document.getElementById('fallback-text').style.display = 'none';
+
+        // VS画面にも反映
+        document.getElementById('match-my-icon-slot').innerHTML = `<img src="${evt.target.result}" style="width:100%;height:100%;object-fit:cover;">`;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  function openItemBox() {
+    alert("称号機能は今後のアップデートで追加されます！");
+  }
+
+  // --- モーダル制御 ---
+  function showNoticeModal(title, text) {
+    document.getElementById('notice-modal-header').innerText = title;
+    document.getElementById('notice-modal-body').innerText = text;
+    document.getElementById('notice-modal').style.display = 'flex';
+  }
+
+  function openRuleModal() {
+    document.getElementById('rule-modal').style.display = 'flex';
+  }
+
+  function openRankingModal() {
+    document.getElementById('ranking-modal-body').innerText = "1位: レスバキング (勝率 98%)\n2位: ひろゆき風Bot (勝率 85%)\n3位: 議論好きのタナカ (勝率 72%)";
+    document.getElementById('ranking-modal').style.display = 'flex';
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).style.display = 'none';
+  }
+
+  // --- マッチング処理 ---
+  function startMatching() {
+    socket.emit('join_match', { name: userName, level: 1 });
     
-    titleScreen.classList.add('hidden');
-    matchingScreen.classList.remove('hidden');
-  });
+    menuScreen.style.display = 'none';
+    vsMatchScreen.style.display = 'flex';
+    document.getElementById('match-countdown-banner').innerText = "相手を探しています...";
+    document.getElementById('match-enemy-info-bar').innerText = "WAITING...";
+  }
 
-  // ==========================================
-  // 2. マッチング成立
-  // ==========================================
+  function goBackToMenu() {
+    window.location.reload(); // 簡易キャンセルのためリロード
+  }
+
+  // Socket: マッチング成立
   socket.on('match_found', (data) => {
     myId = socket.id;
     currentRoomId = data.roomId;
 
-    matchingScreen.classList.add('hidden');
-    gameScreen.classList.remove('hidden');
-    chatArea.innerHTML = ''; // チャットログ初期化
+    document.getElementById('match-countdown-banner').innerText = "MATCH FOUND!";
+    document.getElementById('match-enemy-info-bar').innerText = `${data.opponentName} (Lv.${data.opponentLevel})`;
 
-    document.getElementById('theme-title').innerText = `お題: ${data.theme}`;
-    document.getElementById('my-info').innerText = `自分 (Lv.1)`;
-    document.getElementById('my-side').innerText = `【${data.yourSide}】`;
-    document.getElementById('opp-info').innerText = `${data.opponentName} (Lv.${data.opponentLevel})`;
-    document.getElementById('opp-side').innerText = `【${data.opponentSide}】`;
+    setTimeout(() => {
+      vsMatchScreen.style.display = 'none';
+      debateScreen.style.display = 'flex';
+      document.getElementById('chat-box').innerHTML = '';
+
+      document.getElementById('current-theme').innerText = `お題: ${data.theme}\n【あなたの立場: ${data.yourSide}】`;
+      document.getElementById('my-hp-label').innerText = `あなた (${data.yourSide}): 10000`;
+      document.getElementById('enemy-hp-label').innerText = `相手 (${data.opponentSide}): 10000`;
+    }, 1500);
   });
 
-  // ==========================================
-  // 3. タイピング検知＆メッセージ送信
-  // ==========================================
+  // --- バトル・チャット処理 ---
+  const msgInput = document.getElementById('message-input');
   msgInput.addEventListener('input', () => {
     if (!isTyping) {
       isTyping = true;
@@ -362,38 +413,41 @@
     }, 2000);
   });
 
-  btnSend.addEventListener('click', sendMessage);
   msgInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') sendMessage();
   });
 
   function sendMessage() {
-    const msg = msgInput.value.trim();
-    if (!msg || !currentRoomId) return;
+    const text = msgInput.value.trim();
+    if (!text || !currentRoomId) return;
 
-    socket.emit('send_message', { roomId: currentRoomId, message: msg });
+    socket.emit('send_message', { roomId: currentRoomId, message: text });
     msgInput.value = '';
     isTyping = false;
   }
 
-  // メッセージ受信
+  // Socket: メッセージ受信
   socket.on('receive_message', (data) => {
-    const msgDiv = document.createElement('div');
+    const chatBox = document.getElementById('chat-box');
     const isMe = data.senderId === myId;
-    msgDiv.className = `message ${isMe ? 'my-msg' : 'opp-msg'}`;
-    msgDiv.innerHTML = `<div class="sender-name">${data.senderName} (${data.senderSide})</div>${data.message}`;
-    
-    chatArea.appendChild(msgDiv);
-    chatArea.scrollTop = chatArea.scrollHeight;
+
+    const row = document.createElement('div');
+    row.className = `message-row ${isMe ? 'my-message' : 'other-message'}`;
+
+    row.innerHTML = `
+      <div class="sender-name">${data.senderName} (${data.senderSide})</div>
+      <div class="bubble">${data.message}</div>
+    `;
+
+    chatBox.appendChild(row);
+    chatBox.scrollTop = chatBox.scrollHeight;
 
     updatePlayersUI(data.players);
   });
 
-  // ==========================================
-  // 4. 毎秒のHP・時間更新
-  // ==========================================
+  // Socket: HP・時間の毎秒同期
   socket.on('tick_status', (data) => {
-    document.getElementById('time-left').innerText = data.timeLeft;
+    document.getElementById('time-left-num').innerText = data.timeLeft;
     updatePlayersUI(data.players);
   });
 
@@ -404,44 +458,41 @@
       const hpPct = Math.max(0, (p.hp / 10000) * 100);
 
       if (pId === myId) {
-        document.getElementById('my-hp').innerText = p.hp;
+        document.getElementById('my-hp-label').innerText = `あなた: ${p.hp}`;
         document.getElementById('my-hp-bar').style.width = `${hpPct}%`;
       } else {
-        document.getElementById('opp-hp').innerText = p.hp;
-        document.getElementById('opp-hp-bar').style.width = `${hpPct}%`;
+        document.getElementById('enemy-hp-label').innerText = `相手: ${p.hp}`;
+        document.getElementById('enemy-hp-bar').style.width = `${hpPct}%`;
       }
     });
   }
 
-  // ==========================================
-  // 5. 降参ボタン
-  // ==========================================
-  btnSurrender.addEventListener('click', () => {
-    if (confirm('本当に降参しますか？')) {
+  function surrenderGame() {
+    if (confirm("本当に降参しますか？")) {
       socket.emit('surrender', { roomId: currentRoomId });
     }
-  });
+  }
 
-  // ==========================================
-  // 6. ゲームオーバー / キック / BAN 通知受け取り
-  // ==========================================
-  // キック通知（暴言1〜3回目）
+  // --- キック / BAN / 勝敗受信 ---
   socket.on('kicked_notification', (data) => {
-    showModal(
+    debateScreen.style.display = 'none';
+    menuScreen.style.display = 'flex';
+    showNoticeModal(
       data.isBanned ? "🚫 BAN（アカウント停止）" : "⚠️ キック（強制退室）",
       data.reason
     );
   });
 
-  // BAN中ユーザーのログイン拒否通知
   socket.on('banned_notification', (data) => {
-    matchingScreen.classList.add('hidden');
-    titleScreen.classList.remove('hidden');
-    showModal("🚫 アクセス拒否", data.reason);
+    vsMatchScreen.style.display = 'none';
+    menuScreen.style.display = 'flex';
+    showNoticeModal("🚫 アクセス拒否", data.reason);
   });
 
-  // 勝敗通知
   socket.on('game_over', (data) => {
+    debateScreen.style.display = 'none';
+    menuScreen.style.display = 'flex';
+
     let title = "試合終了";
     let message = "";
 
@@ -450,7 +501,7 @@
       message = "相手プレイヤーが暴言（NGワード）によりキックされたため、あなたの勝利です！";
     } else if (data.reason === "OPPONENT_BANNED") {
       title = "🎉 不戦勝！";
-      message = "相手プレイヤーがBAN（アカウント停止）されたため、あなたの勝利です！";
+      message = "相手プレイヤーがBANされたため、あなたの勝利です！";
     } else if (data.reason === "SURRENDER") {
       title = "試合決着";
       message = `勝者: ${data.winnerName}\n（降参により決着）`;
@@ -459,21 +510,7 @@
       message = data.reason === "HP_ZERO" ? "HPが0になりました！" : "制限時間が終了しました！";
     }
 
-    showModal(title, message);
-  });
-
-  function showModal(title, bodyText) {
-    document.getElementById('modal-title').innerText = title;
-    document.getElementById('modal-body').innerText = bodyText;
-    modal.classList.remove('hidden');
-  }
-
-  btnModalClose.addEventListener('click', () => {
-    modal.classList.add('hidden');
-    gameScreen.classList.add('hidden');
-    matchingScreen.classList.add('hidden');
-    titleScreen.classList.remove('hidden');
-    currentRoomId = null;
+    showNoticeModal(title, message);
   });
 </script>
 </body>
