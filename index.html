@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>レスバONLINE</title>
+  <title>ゆるろん</title>
+  <script src="/socket.io/socket.io.js"></script>
   <style>
-    /* 全体設定 */
     * {
       box-sizing: border-box;
       margin: 0;
@@ -13,9 +13,9 @@
     }
 
     body {
-      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
-      background-color: #f0f2f5;
-      color: #333;
+      font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+      background-color: #fce4ec;
+      color: #4a4a4a;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -24,16 +24,17 @@
 
     #app {
       width: 100%;
-      max-width: 450px;
+      max-width: 480px;
       height: 100vh;
-      max-height: 800px;
+      max-height: 840px;
       background-color: #ffffff;
       display: flex;
       flex-direction: column;
       position: relative;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(240, 98, 146, 0.2);
+      border-radius: 20px;
       overflow: hidden;
+      border: 4px solid #f8bbd0;
     }
 
     /* 画面切り替え */
@@ -45,92 +46,116 @@
     }
 
     .screen.active {
-      display: flex;
+      display: flex !important;
     }
 
-    /* タイトル画面 */
-    .title-area {
-      text-align: center;
-      margin-top: 30px;
+    /* メニュー画面 */
+    #menu-screen {
+      position: relative;
+      width: 100%;
+      align-items: center;
+    }
+
+    .app-title {
+      font-size: 2.5rem;
+      color: #ff4081;
+      font-weight: bold;
+      margin-top: 20px;
       margin-bottom: 20px;
+      text-shadow: 2px 2px 0px #f8bbd0;
     }
 
-    .title-area h1 {
-      font-size: 2.4rem;
-      color: #ff4757;
-      font-weight: 800;
-    }
-
-    .profile-card {
-      background: #f8f9fa;
-      border: 2px solid #e9ecef;
-      border-radius: 12px;
+    .profile-box {
+      width: 100%;
+      background: #fff0f5;
+      border: 3px dashed #ff80ab;
+      border-radius: 16px;
       padding: 15px;
       text-align: center;
       margin-bottom: 20px;
     }
 
-    .profile-card input {
-      width: 80%;
-      padding: 10px;
-      margin-top: 10px;
-      border: 2px solid #ced4da;
-      border-radius: 8px;
-      font-size: 1rem;
-      text-align: center;
-      outline: none;
+    .avatar-area {
+      position: relative;
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 10px;
+      cursor: pointer;
     }
 
-    .profile-card input:focus {
-      border-color: #ff4757;
+    .avatar-img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background-color: #ffcdd2;
+      object-fit: cover;
+      border: 3px solid #fff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
 
-    .stats {
+    .player-name-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .player-name {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #c2185b;
+    }
+
+    .btn-edit-name {
+      background: #ff80ab;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 2px 8px;
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+
+    .user-stats {
       display: flex;
       justify-content: space-around;
-      margin-top: 12px;
       font-weight: bold;
-      color: #495057;
+      color: #880e4f;
+      background: rgba(255, 255, 255, 0.6);
+      padding: 6px;
+      border-radius: 10px;
     }
 
-    .menu-buttons {
+    .menu-btn-group {
+      width: 100%;
       display: flex;
       flex-direction: column;
       gap: 12px;
       margin-top: auto;
-      margin-bottom: 30px;
+      margin-bottom: 20px;
     }
 
-    .btn {
+    .btn-yuru {
       padding: 14px;
       border: none;
-      border-radius: 10px;
-      font-size: 1.05rem;
+      border-radius: 25px;
+      font-size: 1.1rem;
       font-weight: bold;
       cursor: pointer;
-      transition: background-color 0.2s, transform 0.1s;
+      box-shadow: 0 4px 0px rgba(0,0,0,0.1);
+      transition: transform 0.1s;
     }
 
-    .btn:active {
-      transform: scale(0.98);
+    .btn-yuru:active {
+      transform: translateY(2px);
+      box-shadow: none;
     }
 
-    .btn-main {
-      background-color: #ff4757;
-      color: white;
-    }
-
-    .btn-sub {
-      background-color: #e9ecef;
-      color: #495057;
-    }
-
-    .btn-danger {
-      background-color: #ff6b81;
-      color: white;
-      padding: 8px 12px;
-      font-size: 0.85rem;
-    }
+    .btn-pink { background: #ff4081; color: white; }
+    .btn-light-pink { background: #ff80ab; color: white; }
+    .btn-purple { background: #ba68c8; color: white; }
+    .btn-gray { background: #e0e0e0; color: #616161; }
 
     /* マッチング画面 */
     .matching-box {
@@ -139,14 +164,15 @@
       justify-content: center;
       align-items: center;
       height: 100%;
+      color: #ff4081;
     }
 
-    .loader {
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #ff4757;
+    .yuru-loader {
+      width: 50px;
+      height: 50px;
+      border: 5px solid #f8bbd0;
+      border-top: 5px solid #ff4081;
       border-radius: 50%;
-      width: 45px;
-      height: 45px;
       animation: spin 1s linear infinite;
       margin-bottom: 20px;
     }
@@ -158,61 +184,63 @@
 
     /* バトル画面 */
     .battle-header {
-      background: #f8f9fa;
-      padding: 12px;
-      border-radius: 10px;
+      background: #fff0f5;
+      padding: 10px;
+      border-radius: 12px;
+      border: 2px solid #ff80ab;
       margin-bottom: 10px;
-      border: 1px solid #e9ecef;
     }
 
-    .timer {
+    .timer-display {
       text-align: center;
       font-size: 1.1rem;
       font-weight: bold;
-      color: #ff4757;
-      margin-bottom: 4px;
+      color: #ff4081;
     }
 
-    .theme {
+    .theme-box {
       text-align: center;
       font-size: 0.95rem;
       font-weight: bold;
-      color: #2f3542;
+      color: #880e4f;
+      margin-top: 4px;
     }
 
-    .status-bars {
+    .hp-status-container {
       display: flex;
       gap: 10px;
       margin-bottom: 10px;
     }
 
-    .player-status {
+    .hp-card {
       flex: 1;
-      background: #f1f2f6;
+      background: #fff3e0;
+      border: 2px solid #ffe0b2;
       padding: 8px;
-      border-radius: 8px;
+      border-radius: 10px;
     }
 
-    .bar-bg {
+    .hp-bar-bg {
       width: 100%;
-      height: 10px;
-      background: #dfe4ea;
-      border-radius: 5px;
+      height: 12px;
+      background: #ffe0b2;
+      border-radius: 6px;
       overflow: hidden;
       margin-top: 4px;
     }
 
-    .bar-fill {
+    .hp-bar-fill {
       height: 100%;
-      background: #2ed573;
+      background: #ff9800;
       width: 100%;
       transition: width 0.3s;
     }
 
-    .chat-area {
+    .chat-timeline {
       flex: 1;
-      background: #f1f2f6;
-      border-radius: 10px;
+      background: #fafafa;
+      border: 2px solid #f0f0f0;
+      border-radius: 12px;
       padding: 12px;
       overflow-y: auto;
       display: flex;
@@ -221,181 +249,193 @@
       margin-bottom: 8px;
     }
 
-    .chat-bubble {
+    .msg-bubble {
       max-width: 80%;
-      padding: 10px 14px;
-      border-radius: 14px;
+      padding: 8px 12px;
+      border-radius: 16px;
       font-size: 0.9rem;
-      line-height: 1.4;
       word-break: break-all;
     }
 
-    .bubble-mine {
+    .msg-self {
       align-self: flex-end;
-      background-color: #ff4757;
+      background-color: #ff80ab;
       color: white;
-      border-bottom-right-radius: 2px;
+      border-bottom-right-radius: 4px;
     }
 
-    .bubble-other {
+    .msg-opponent {
       align-self: flex-start;
       background-color: #ffffff;
-      color: #2f3542;
-      border: 1px solid #e4e7eb;
-      border-bottom-left-radius: 2px;
+      color: #4a4a4a;
+      border: 2px solid #f8bbd0;
+      border-bottom-left-radius: 4px;
     }
 
-    .sender-name {
-      font-size: 0.75rem;
+    .msg-sender {
+      font-size: 0.7rem;
       opacity: 0.8;
       margin-bottom: 2px;
     }
 
-    .typing-text {
+    .typing-indicator {
       font-size: 0.8rem;
-      color: #747d8c;
+      color: #ba68c8;
       height: 16px;
       margin-bottom: 4px;
     }
 
-    .input-box {
+    .input-area {
       display: flex;
       gap: 6px;
     }
 
-    .input-box input {
+    .input-area input {
       flex: 1;
       padding: 10px;
-      border-radius: 8px;
-      border: 1px solid #ced4da;
+      border-radius: 20px;
+      border: 2px solid #ff80ab;
       outline: none;
     }
 
     /* モーダル */
-    .modal-bg {
+    .modal-overlay {
       display: none;
       position: absolute;
       top: 0; left: 0;
       width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.5);
+      background: rgba(0, 0, 0, 0.4);
       justify-content: center;
       align-items: center;
-      z-index: 10;
+      z-index: 100;
     }
 
-    .modal-body {
+    .modal-content {
       background: white;
       padding: 20px;
-      border-radius: 12px;
-      width: 80%;
+      border-radius: 16px;
+      width: 85%;
+      border: 3px solid #ff80ab;
       text-align: center;
     }
 
     .modal-title {
       font-size: 1.2rem;
       font-weight: bold;
-      color: #ff4757;
-      margin-bottom: 10px;
+      color: #ff4081;
+      margin-bottom: 12px;
     }
 
-    .ranking-container {
-      max-height: 180px;
-      overflow-y: auto;
-      text-align: left;
+    .ranking-table {
+      width: 100%;
+      border-collapse: collapse;
       margin-bottom: 15px;
     }
 
-    .rank-row {
-      padding: 6px 0;
-      border-bottom: 1px solid #eee;
-      display: flex;
-      justify-content: space-between;
+    .ranking-table th, .ranking-table td {
+      padding: 8px;
+      border-bottom: 1px solid #f8bbd0;
+      font-size: 0.85rem;
+    }
+
+    .ranking-table th {
+      background-color: #fff0f5;
+      color: #c2185b;
     }
   </style>
 </head>
 <body>
 
 <div id="app">
-  <!-- メニュー画面 -->
+  <!-- 1. メニュー画面 -->
   <div id="menu-screen" class="screen active">
-    <div class="title-area">
-      <h1>レスバ ONLINE</h1>
-    </div>
+    <div class="app-title">ゆるろん</div>
 
-    <div class="profile-card">
-      <div>プレイヤー設定</div>
-      <input type="text" id="username-input" maxlength="10" placeholder="名前を入力">
-      <div class="stats">
+    <div class="profile-box">
+      <div class="avatar-area" onclick="triggerImageUpload()">
+        <img id="avatar-img" class="avatar-img" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'><circle cx='40' cy='40' r='40' fill='%23ffcdd2'/><text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-size='30' fill='%23c2185b'>🌸</text></svg>" alt="icon">
+        <input type="file" id="icon-file-input" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
+      </div>
+
+      <div class="player-name-container">
+        <span id="player-name-disp" class="player-name">名無し</span>
+        <button class="btn-edit-name" onclick="changeName()">名前変更</button>
+      </div>
+
+      <div class="user-stats">
         <span id="user-display-level">Lv.1</span>
         <span id="user-display-wins">0 勝</span>
       </div>
     </div>
 
-    <div class="menu-buttons">
-      <button id="btn-match" class="btn btn-main">対戦をはじめる</button>
-      <button id="btn-ranking" class="btn btn-sub">ランキング</button>
+    <div class="menu-btn-group">
+      <button class="btn-yuru btn-pink" onclick="startMatching()">オンライン対戦</button>
+      <button class="btn-yuru btn-light-pink" onclick="openRankingModal()">ランキング</button>
+      <button class="btn-yuru btn-purple" onclick="showTitles()">称号（準備中）</button>
     </div>
   </div>
 
-  <!-- マッチング画面 -->
+  <!-- 2. マッチング画面 -->
   <div id="matching-screen" class="screen">
     <div class="matching-box">
-      <div class="loader"></div>
-      <p>対戦相手を探しています...</p>
+      <div class="yuru-loader"></div>
+      <p>対戦相手を探してるだみョン...</p>
     </div>
   </div>
 
-  <!-- バトル画面 -->
+  <!-- 3. バトル画面 -->
   <div id="battle-screen" class="screen">
     <div class="battle-header">
-      <div id="timer-display" class="timer">残り時間 03:00</div>
-      <div id="theme-display" class="theme">お題を取得中...</div>
+      <div id="timer-display" class="timer-display">残り時間 03:00</div>
+      <div id="theme-display" class="theme-box">お題を取得中...</div>
     </div>
 
-    <div class="status-bars">
-      <div class="player-status">
-        <div id="p1-name" style="font-size: 0.8rem;">あなた</div>
+    <div class="hp-status-container">
+      <div class="hp-card">
+        <div id="p1-name" style="font-size: 0.8rem; font-weight: bold;" class="player-name-p1">あなた</div>
         <div style="font-size: 0.75rem;">HP: <span id="p1-hp-text">10000</span></div>
-        <div class="bar-bg"><div id="p1-hp-bar" class="bar-fill"></div></div>
+        <div class="hp-bar-bg"><div id="p1-hp-bar" class="hp-bar-fill"></div></div>
       </div>
-      <div class="player-status">
-        <div id="p2-name" style="font-size: 0.8rem;">相手</div>
+      <div class="hp-card">
+        <div id="p2-name" style="font-size: 0.8rem; font-weight: bold;">相手</div>
         <div style="font-size: 0.75rem;">HP: <span id="p2-hp-text">10000</span></div>
-        <div class="bar-bg"><div id="p2-hp-bar" class="bar-fill"></div></div>
+        <div class="hp-bar-bg"><div id="p2-hp-bar" class="hp-bar-fill"></div></div>
       </div>
     </div>
 
-    <div id="chat-timeline" class="chat-area"></div>
-    <div id="typing-indicator" class="typing-text"></div>
+    <div id="chat-timeline" class="chat-timeline"></div>
+    <div id="typing-indicator" class="typing-indicator"></div>
 
-    <div class="input-box">
-      <input type="text" id="chat-input" placeholder="反論を入力..." maxlength="100">
-      <button id="btn-send" class="btn btn-main" style="padding: 10px 14px;">送信</button>
-      <button id="btn-surrender" class="btn btn-danger">降参</button>
+    <div class="input-area">
+      <input type="text" id="chat-input" placeholder="メッセージを入力..." maxlength="100">
+      <button class="btn-yuru btn-pink" style="padding: 8px 15px; font-size: 0.9rem;" onclick="sendMessage()">送信</button>
+      <button class="btn-yuru btn-gray" style="padding: 8px 12px; font-size: 0.8rem;" onclick="surrender()">降参</button>
     </div>
   </div>
 
-  <!-- モーダル (通知用) -->
-  <div id="notice-modal" class="modal-bg">
-    <div class="modal-body">
-      <div id="modal-title" class="modal-title">通知</div>
-      <div id="modal-text" style="margin-bottom: 15px; white-space: pre-wrap;"></div>
-      <button id="modal-close-btn" class="btn btn-main" style="width: 100%;">閉じる</button>
+  <!-- お知らせモーダル -->
+  <div id="notice-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div id="modal-title" class="modal-title">お知らせ</div>
+      <div id="modal-body" style="margin-bottom: 15px; white-space: pre-wrap; font-size: 0.9rem;"></div>
+      <button class="btn-yuru btn-pink" style="width: 100%; padding: 10px;" onclick="closeNoticeModal()">閉じる</button>
     </div>
   </div>
 
-  <!-- モーダル (ランキング用) -->
-  <div id="ranking-modal" class="modal-bg">
-    <div class="modal-body">
-      <div class="modal-title">🏆 ランキング</div>
-      <div id="ranking-list" class="ranking-container"></div>
-      <button id="ranking-close-btn" class="btn btn-sub" style="width: 100%;">閉じる</button>
+  <!-- ランキングモーダル -->
+  <div id="ranking-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-title">🏆 勝利数ランキング</div>
+      <div id="ranking-modal-body" style="max-height: 220px; overflow-y: auto;">
+        最新データを読み込み中...
+      </div>
+      <button class="btn-yuru btn-light-pink" style="width: 100%; padding: 10px; margin-top: 10px;" onclick="closeRankingModal()">閉じる</button>
     </div>
   </div>
 </div>
 
-<script src="/socket.io/socket.io.js"></script>
 <script>
+  // 1. 端末固有IDの自動生成・保存
   function getOrCreateUserId() {
     let userId = localStorage.getItem('yururon_user_id');
     if (!userId) {
@@ -408,116 +448,126 @@
   const userId = getOrCreateUserId();
   const socket = io();
 
+  let userName = "名無し";
   let currentRoomId = null;
   let isTypingTimer = null;
 
+  // サーバー接続時に端末IDを送信してユーザーデータ読み込み
   socket.on('connect', () => {
     socket.emit('auth_user', { userId: userId });
   });
 
   socket.on('user_data_loaded', (userData) => {
-    const levelElem = document.getElementById('user-display-level');
-    const winsElem = document.getElementById('user-display-wins');
-    const nameInput = document.getElementById('username-input');
-
-    if (levelElem) levelElem.innerText = `Lv.${userData.level}`;
-    if (winsElem) winsElem.innerText = `${userData.wins} 勝`;
-    if (nameInput && userData.name && userData.name !== "名無し") {
-      nameInput.value = userData.name;
+    if (userData.name) {
+      userName = userData.name;
+      document.getElementById('player-name-disp').innerText = userName;
     }
+    document.getElementById('user-display-level').innerText = `Lv.${userData.level}`;
+    document.getElementById('user-display-wins').innerText = `${userData.wins} 勝`;
   });
 
   function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    const target = document.getElementById(screenId);
-    if (target) target.classList.add('active');
+    document.getElementById(screenId).classList.add('active');
   }
 
-  function showNoticeModal(title, text) {
-    const titleElem = document.getElementById('modal-title');
-    const textElem = document.getElementById('modal-text');
-    const modalElem = document.getElementById('notice-modal');
-
-    if (titleElem) titleElem.innerText = title;
-    if (textElem) textElem.innerText = text;
-    if (modalElem) modalElem.style.display = 'flex';
+  // 名前変更処理
+  function changeName() {
+    const input = prompt("新しいプレイヤー名を入力してください（10文字以内）:", userName);
+    if (input && input.trim() !== "") {
+      userName = input.trim().substring(0, 10);
+      document.getElementById('player-name-disp').innerText = userName;
+      
+      // サーバー側に名前更新を送信
+      socket.emit('update_name', { name: userName });
+    }
   }
 
-  const closeBtn = document.getElementById('modal-close-btn');
-  if (closeBtn) {
-    closeBtn.onclick = () => {
-      document.getElementById('notice-modal').style.display = 'none';
-    };
+  function triggerImageUpload() {
+    document.getElementById('icon-file-input').click();
   }
 
-  const rankCloseBtn = document.getElementById('ranking-close-btn');
-  if (rankCloseBtn) {
-    rankCloseBtn.onclick = () => {
-      document.getElementById('ranking-modal').style.display = 'none';
-    };
+  function handleImageUpload(e) {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        document.getElementById('avatar-img').src = evt.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
   }
 
-  const usernameInput = document.getElementById('username-input');
-  if (usernameInput) {
-    usernameInput.addEventListener('change', () => {
-      socket.emit('update_name', { name: usernameInput.value.trim() || "名無し" });
-    });
+  function showTitles() {
+    alert("称号機能は今後のアップデートで追加されます！");
   }
 
-  const btnMatch = document.getElementById('btn-match');
-  if (btnMatch) {
-    btnMatch.onclick = () => {
-      const name = usernameInput ? usernameInput.value.trim() || "名無し" : "名無し";
-      showScreen('matching-screen');
-      socket.emit('join_match', { name: name });
-    };
+  function startMatching() {
+    showScreen('matching-screen');
+    socket.emit('join_match', { name: userName });
   }
 
-  const btnRanking = document.getElementById('btn-ranking');
-  if (btnRanking) {
-    btnRanking.onclick = () => {
-      socket.emit('get_ranking');
-    };
+  // ランキング取得処理
+  function openRankingModal() {
+    const body = document.getElementById('ranking-modal-body');
+    body.innerText = "最新データを読み込み中...";
+    document.getElementById('ranking-modal').style.display = 'flex';
+
+    socket.emit('get_ranking');
+  }
+
+  function closeRankingModal() {
+    document.getElementById('ranking-modal').style.display = 'none';
   }
 
   socket.on('ranking_data', (rankingList) => {
-    const container = document.getElementById('ranking-list');
-    if (!container) return;
-    
-    container.innerHTML = '';
-    if (rankingList.length === 0) {
-      container.innerHTML = '<div style="text-align:center;">記録がありません</div>';
-    } else {
-      rankingList.forEach((item, index) => {
-        const div = document.createElement('div');
-        div.className = 'rank-row';
-        div.innerHTML = `
-          <span><strong>#${index + 1}</strong> ${escapeHtml(item.name)} (Lv.${item.level})</span>
-          <span>${item.wins} 勝</span>
-        `;
-        container.appendChild(div);
-      });
+    const body = document.getElementById('ranking-modal-body');
+
+    if (!rankingList || rankingList.length === 0) {
+      body.innerHTML = "<p style='text-align:center;'>まだ勝利記録がありません。<br>勝利して1位を目指そう！</p>";
+      return;
     }
-    document.getElementById('ranking-modal').style.display = 'flex';
+
+    let html = `
+      <table class="ranking-table">
+        <thead>
+          <tr>
+            <th>順位</th>
+            <th>プレイヤー名</th>
+            <th>勝利数</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    rankingList.forEach((item, index) => {
+      html += `
+        <tr>
+          <td><strong>#${index + 1}</strong></td>
+          <td>${escapeHtml(item.name)} (Lv.${item.level})</td>
+          <td>${item.wins} 勝</td>
+        </tr>
+      `;
+    });
+
+    html += `</tbody></table>`;
+    body.innerHTML = html;
   });
 
+  // バトル開始処理
   socket.on('match_found', (data) => {
     currentRoomId = data.roomId;
-    const themeElem = document.getElementById('theme-display');
-    const timelineElem = document.getElementById('chat-timeline');
-
-    if (themeElem) themeElem.innerText = `お題: ${data.theme}`;
-    if (timelineElem) timelineElem.innerHTML = '';
+    document.getElementById('theme-display').innerText = `お題: ${data.theme}`;
+    document.getElementById('chat-timeline').innerHTML = '';
     showScreen('battle-screen');
   });
 
+  // HP & タイマー更新
   socket.on('tick_status', (data) => {
     const timerElem = document.getElementById('timer-display');
-    if (timerElem) {
-      const m = Math.floor(data.timeLeft / 60).toString().padStart(2, '0');
-      const s = (data.timeLeft % 60).toString().padStart(2, '0');
-      timerElem.innerText = `残り時間 ${m}:${s}`;
-    }
+    const m = Math.floor(data.timeLeft / 60).toString().padStart(2, '0');
+    const s = (data.timeLeft % 60).toString().padStart(2, '0');
+    timerElem.innerText = `残り時間 ${m}:${s}`;
 
     const pIds = Object.keys(data.players);
     if (pIds.length === 2) {
@@ -526,34 +576,24 @@
       const oppData = data.players[oppId];
 
       if (myData && oppData) {
-        const p1Name = document.getElementById('p1-name');
-        const p1HpText = document.getElementById('p1-hp-text');
-        const p1HpBar = document.getElementById('p1-hp-bar');
-        const p2Name = document.getElementById('p2-name');
-        const p2HpText = document.getElementById('p2-hp-text');
-        const p2HpBar = document.getElementById('p2-hp-bar');
+        document.getElementById('p1-name').innerText = `${myData.name} (あなた)`;
+        document.getElementById('p1-hp-text').innerText = myData.hp;
+        document.getElementById('p1-hp-bar').style.width = `${(myData.hp / 10000) * 100}%`;
+
+        document.getElementById('p2-name').innerText = oppData.name;
+        document.getElementById('p2-hp-text').innerText = oppData.hp;
+        document.getElementById('p2-hp-bar').style.width = `${(oppData.hp / 10000) * 100}%`;
+
         const typingElem = document.getElementById('typing-indicator');
-
-        if (p1Name) p1Name.innerText = `${myData.name} (あなた)`;
-        if (p1HpText) p1HpText.innerText = myData.hp;
-        if (p1HpBar) p1HpBar.style.width = `${(myData.hp / 10000) * 100}%`;
-
-        if (p2Name) p2Name.innerText = oppData.name;
-        if (p2HpText) p2HpText.innerText = oppData.hp;
-        if (p2HpBar) p2HpBar.style.width = `${(oppData.hp / 10000) * 100}%`;
-
-        if (typingElem) {
-          typingElem.innerText = oppData.isTyping ? `${oppData.name} が入力中...` : '';
-        }
+        typingElem.innerText = oppData.isTyping ? `${oppData.name} が入力中だみョン...` : '';
       }
     }
   });
 
+  // チャット機能
   const chatInput = document.getElementById('chat-input');
-  const btnSend = document.getElementById('btn-send');
-
+  
   function sendMessage() {
-    if (!chatInput) return;
     const msg = chatInput.value.trim();
     if (!msg || !currentRoomId) return;
     socket.emit('send_message', { roomId: currentRoomId, message: msg });
@@ -561,15 +601,15 @@
     sendTypingStatus(false);
   }
 
-  if (btnSend) btnSend.onclick = sendMessage;
-  if (chatInput) {
-    chatInput.onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
-    chatInput.oninput = () => {
-      sendTypingStatus(true);
-      clearTimeout(isTypingTimer);
-      isTypingTimer = setTimeout(() => sendTypingStatus(false), 1500);
-    };
-  }
+  chatInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendMessage();
+  });
+
+  chatInput.addEventListener('input', () => {
+    sendTypingStatus(true);
+    clearTimeout(isTypingTimer);
+    isTypingTimer = setTimeout(() => sendTypingStatus(false), 1500);
+  });
 
   function sendTypingStatus(isTyping) {
     if (currentRoomId) socket.emit('typing_status', { roomId: currentRoomId, isTyping });
@@ -577,29 +617,26 @@
 
   socket.on('receive_message', (data) => {
     const timeline = document.getElementById('chat-timeline');
-    if (!timeline) return;
-
     const isSelf = data.senderId === socket.id;
-    const bubbleDiv = document.createElement('div');
-    bubbleDiv.className = `chat-bubble ${isSelf ? 'bubble-mine' : 'bubble-other'}`;
-    bubbleDiv.innerHTML = `<div class="sender-name">${escapeHtml(data.senderName)} (${data.senderSide})</div><div>${escapeHtml(data.message)}</div>`;
 
-    timeline.appendChild(bubbleDiv);
+    const bubble = document.createElement('div');
+    bubble.className = `msg-bubble ${isSelf ? 'msg-self' : 'msg-opponent'}`;
+    bubble.innerHTML = `<div class="msg-sender">${escapeHtml(data.senderName)} (${data.senderSide})</div><div>${escapeHtml(data.message)}</div>`;
+
+    timeline.appendChild(bubble);
     timeline.scrollTop = timeline.scrollHeight;
   });
 
-  const btnSurrender = document.getElementById('btn-surrender');
-  if (btnSurrender) {
-    btnSurrender.onclick = () => {
-      if (currentRoomId && confirm("本当に降参しますか？")) {
-        socket.emit('surrender', { roomId: currentRoomId });
-      }
-    };
+  function surrender() {
+    if (currentRoomId && confirm("本当に降参しますか？")) {
+      socket.emit('surrender', { roomId: currentRoomId });
+    }
   }
 
+  // ゲーム終了（切断・暴言KICK対応）
   socket.on('game_over', (data) => {
     showScreen('menu-screen');
-    let title = "試合終了";
+    let title = "試合終了だみョン！";
     let message = "";
 
     if (data.reason === "OPPONENT_KICKED") {
@@ -624,6 +661,16 @@
     showScreen('menu-screen');
     showNoticeModal("ペナルティ通知", data.reason);
   });
+
+  function showNoticeModal(title, text) {
+    document.getElementById('modal-title').innerText = title;
+    document.getElementById('modal-body').innerText = text;
+    document.getElementById('notice-modal').style.display = 'flex';
+  }
+
+  function closeNoticeModal() {
+    document.getElementById('notice-modal').style.display = 'none';
+  }
 
   function escapeHtml(str) {
     return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
