@@ -1,6 +1,8 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -8,17 +10,41 @@ const io = new Server(server);
 
 app.use(express.static(__dirname));
 
-// データ保持用
+// データ保存用ファイルのパス
+const DATA_FILE = path.join(__dirname, 'users.json');
+
+// ファイルからユーザーデータを読み込む関数
+function loadUserData() {
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const data = fs.readFileSync(DATA_FILE, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (err) {
+    console.error("データ読み込みエラー:", err);
+  }
+  return {};
+}
+
+// ファイルへユーザーデータを書き出す関数
+function saveUserData() {
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(dbUsers, null, 2), 'utf8');
+  } catch (err) {
+    console.error("データ保存エラー:", err);
+  }
+}
+
+// 永続化用データベース（サーバー再起動しても保持される）
+// 形式: { "user_xyz123": { name: "名無し", level: 1, wins: 5 } }
+const dbUsers = loadUserData();
+
+// メモリ用（アクティブなソケットIDとユーザーIDの紐付け）
+const socketToUserId = {};
 let waitingPlayer = null;
 const rooms = {};
 
-// { socketId: { name: string, wins: number } }
-const userStats = {};
-
-// NGワードリスト
 const ngWords = ["死ね", "殺す", "バカ", "アホ", "キチガイ"];
-
-// お題リスト
 const themes = [
   "きのこの山 VS たけのこの里",
   "朝食はパン派 VS ごはん派",
@@ -29,28 +55,48 @@ const themes = [
 io.on('connection', (socket) => {
   console.log(`ユーザー接続: ${socket.id}`);
 
-  // 接続時にIDベースでデータ初期化
-  userStats[socket.id] = {
-    name: "名無し",
-    wins: 0
-  };
+  // ★ PC/スマホ固有のIDを受け取り、データを同期・保存
+  socket.on('auth_user', (data) => {
+    const userId = data.userId;
+    if (!userId) return;
+
+    socketToUserId[socket.id] = userId;
+
+    // 初めてのPCなら初期化、登録済みならデータをロード
+    if (!dbUsers[userId]) {
+      dbUsers[userId] = {
+        name: "名無し",
+        level: 1,
+        wins: 0
+      };
+      saveUserData();
+    }
+
+    // クライアントへ現在のステータス（レベルや勝数）を返送
+    socket.emit('user_data_loaded', dbUsers[userId]);
+  });
 
   // 名前変更イベント
   socket.on('update_name', (data) => {
+    const userId = socketToUserId[socket.id];
     const newName = data.name || "名無し";
     socket.userName = newName;
-    if (userStats[socket.id]) {
-      userStats[socket.id].name = newName;
+
+    if (userId && dbUsers[userId]) {
+      dbUsers[userId].name = newName;
+      saveUserData(); // ファイルへ保存
     }
   });
 
   // 1. マッチング処理
   socket.on('join_match', (data) => {
+    const userId = socketToUserId[socket.id];
     const userName = data.name || "名無し";
     socket.userName = userName;
 
-    if (userStats[socket.id]) {
-      userStats[socket.id].name = userName;
+    if (userId && dbUsers[userId]) {
+      dbUsers[userId].name = userName;
+      saveUserData();
     }
 
     if (waitingPlayer && waitingPlayer.id !== socket.id) {
@@ -139,15 +185,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // 3. タイピング状態同期
-  socket.on('typing_status', (data) => {
-    const room = rooms[data.roomId];
-    if (room && room.players[socket.id]) {
-      room.players[socket.id].isTyping = data.isTyping;
-    }
-  });
-
-  // 4. 降参処理
+  // 3. 降参処理
   socket.on('surrender', (data) => {
     const room = rooms[data.roomId];
     if (!room) return;
@@ -161,12 +199,13 @@ io.on('connection', (socket) => {
     endGame(data.roomId, winnerName, "SURRENDER");
   });
 
-  // 5. ランキングデータ取得
+  // 4. ランキングデータ取得
   socket.on('get_ranking', () => {
-    const rankingList = Object.keys(userStats)
+    const rankingList = Object.keys(dbUsers)
       .map(id => ({
-        name: userStats[id].name,
-        wins: userStats[id].wins
+        name: dbUsers[id].name,
+        wins: dbUsers[id].wins,
+        level: dbUsers[id].level
       }))
       .filter(item => item.wins > 0)
       .sort((a, b) => b.wins - a.wins)
@@ -175,16 +214,14 @@ io.on('connection', (socket) => {
     socket.emit('ranking_data', rankingList);
   });
 
-  // ★ 徹底的に後処理を行う「切断イベント」だみョン！
+  // 5. 切断イベント
   socket.on('disconnect', () => {
     console.log(`ユーザー切断: ${socket.id}`);
 
-    // ① マッチング待ち中にタブを閉じた場合、待機リストを空にする
     if (waitingPlayer && waitingPlayer.id === socket.id) {
       waitingPlayer = null;
     }
 
-    // ② 対戦中にタブを閉じた場合、相手に不戦勝を与えて部屋を破棄する
     Object.keys(rooms).forEach(roomId => {
       const room = rooms[roomId];
       if (room.players[socket.id]) {
@@ -194,13 +231,11 @@ io.on('connection', (socket) => {
         if (opponentId) {
           recordWin(opponentId);
         }
-        // 切断による強制終了を通知
         endGame(roomId, winnerName, "DISCONNECTED");
       }
     });
 
-    // ③ 統計データから切断されたIDをクリア（メモリ解放）
-    delete userStats[socket.id];
+    delete socketToUserId[socket.id];
   });
 });
 
@@ -261,9 +296,14 @@ function startRoomTimer(roomId) {
   }, 1000);
 }
 
+// ★ 勝利数とレベルを記録してファイルに永続保存する関数
 function recordWin(socketId) {
-  if (socketId && userStats[socketId]) {
-    userStats[socketId].wins += 1;
+  const userId = socketToUserId[socketId];
+  if (userId && dbUsers[userId]) {
+    dbUsers[userId].wins += 1;
+    // 3勝ごとにレベルアップする例（ロジックは自由に変更可能）
+    dbUsers[userId].level = Math.floor(dbUsers[userId].wins / 3) + 1;
+    saveUserData(); // ファイルへ保存！
   }
 }
 
