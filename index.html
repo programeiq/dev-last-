@@ -325,6 +325,23 @@
   </div>
 
 <script>
+  // 1. ブラウザ固有のIDを取得（なければ生成して保存）
+  function getOrCreateUserId() {
+    let userId = localStorage.getItem('my_game_user_id');
+    if (!userId) {
+      userId = 'user_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+      localStorage.setItem('my_game_user_id', userId);
+    }
+    return userId;
+  }
+
+  const userId = getOrCreateUserId();
+  const socket = io();
+
+  // 接続直後にサーバーへ自分のIDを認識させる
+  socket.on('connect', () => {
+    socket.emit('auth_user', { userId: userId });
+  });
   const socket = io();
 
   let myId = null;
