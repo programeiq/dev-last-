@@ -125,7 +125,7 @@
       font-size: 22px; font-weight: bold; color: #31A07B; text-align: center; margin-bottom: 15px; border-bottom: 2px solid #31A07B; padding-bottom: 8px;
     }
     .modal-body {
-      overflow-y. auto; flex-grow: 1; font-size: 15px; line-height: 1.6; color: #444; white-space: pre-wrap;
+      overflow-y: auto; flex-grow: 1; font-size: 15px; line-height: 1.6; color: #444; white-space: pre-wrap;
     }
     .modal-close-btn {
       margin-top: 15px; background: #FF7675; color: white; border: none; padding: 10px; border-radius: 12px; font-weight: bold; font-size: 16px; cursor: pointer; text-align: center;
@@ -325,18 +325,27 @@
   </div>
 
 <script>
-  // 1. 旧IDの検索・自動引き継ぎ処理
+  // 単一の固定キーのみを使用（上書きや別キーでの再作成を防ぐ）
+  const STORAGE_KEY = 'yururon_user_id';
+
   function getOrCreateUserId() {
-    let userId = localStorage.getItem('yururon_user_id') || 
-                 localStorage.getItem('user_id') || 
-                 localStorage.getItem('userId');
-    
-    if (!userId) {
-      userId = 'user_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+    let savedId = null;
+
+    try {
+      savedId = localStorage.getItem(STORAGE_KEY);
+    } catch (e) {
+      console.warn('localStorageアクセスエラー:', e);
     }
-    
-    localStorage.setItem('yururon_user_id', userId);
-    return userId;
+
+    if (!savedId) {
+      savedId = 'user_' + Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
+      try {
+        localStorage.setItem(STORAGE_KEY, savedId);
+      } catch (e) {
+        console.warn('localStorage保存エラー:', e);
+      }
+    }
+    return savedId;
   }
 
   const userId = getOrCreateUserId();
@@ -346,7 +355,7 @@
   let currentRoomId = null;
   let isTypingTimer = null;
 
-  // サーバー接続時にユーザーIDを同期
+  // サーバー接続時にユーザーIDを毎回同期する
   socket.on('connect', () => {
     socket.emit('auth_user', { userId: userId });
   });
@@ -356,7 +365,7 @@
       userName = userData.name;
       document.getElementById('player-name-disp').innerText = userName;
     }
-    document.getElementById('display-box').innerText = `STATUS : READY (Lv.${userData.level} / ${userData.wins}勝)`;
+    document.getElementById('display-box').innerText = `STATUS : READY (Lv.${userData.level || 1} / ${userData.wins || 0}勝)`;
   });
 
   function showScreen(screenId) {
@@ -537,7 +546,7 @@
       title = "不戦勝！";
       message = "相手プレイヤーが暴言（NGワード）によりキックされたため、あなたの勝利です！";
     } else if (data.reason === "DISCONNECTED") {
-      title = "不戦勝！";
+      title = " 不戦勝！";
       message = "相手プレイヤーが通信切断（タブを閉じた等）したため、あなたの勝利です！";
     } else if (data.reason === "SURRENDER") {
       title = "試合決着";
