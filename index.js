@@ -123,7 +123,7 @@ io.on('connection', (socket) => {
       player1.emit('match_found', {
         roomId,
         theme,
-        yourSide: "論者A",
+        yourSide: "前者",
         opponentName: player2.userName,
         opponentLevel: 1
       });
@@ -131,7 +131,7 @@ io.on('connection', (socket) => {
       player2.emit('match_found', {
         roomId,
         theme,
-        yourSide: "論者B",
+        yourSide: "後者",
         opponentName: player1.userName,
         opponentLevel: 1
       });
