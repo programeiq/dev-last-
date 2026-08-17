@@ -436,12 +436,26 @@
 
 <script>
   // 1. 端末固有IDの自動生成・保存
+// 過去に使われていた可能性のある保存キーを順番にチェックして復元する処理
   function getOrCreateUserId() {
+    // 1. まず現在のキーを確認
     let userId = localStorage.getItem('yururon_user_id');
+    
+    // 2. なければ、過去の旧キー（user_id や userId）に残っていないか確認
+    if (!userId) {
+      userId = localStorage.getItem('user_id') || localStorage.getItem('userId');
+      if (userId) {
+        // 旧キーで見つかったら、現在のキーに保存し直して引き継ぐ
+        localStorage.setItem('yururon_user_id', userId);
+      }
+    }
+    
+    // 3. どこにも保存されていなければ完全新規発行
     if (!userId) {
       userId = 'user_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
       localStorage.setItem('yururon_user_id', userId);
     }
+    
     return userId;
   }
 
