@@ -1,348 +1,348 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ゆるろん</title>
-  <script src="/socket.io/socket.io.js"></script>
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ゆるろん</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
-    body {
-      font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
-      background-color: #fce4ec;
-      color: #4a4a4a;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-    }
+body {
+  font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif;
+  background-color: #fce4ec;
+  color: #4a4a4a;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
 
-    #app {
-      width: 100%;
-      max-width: 480px;
-      height: 100vh;
-      max-height: 840px;
-      background-color: #ffffff;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-      box-shadow: 0 8px 24px rgba(240, 98, 146, 0.2);
-      border-radius: 20px;
-      overflow: hidden;
-      border: 4px solid #f8bbd0;
-    }
+#app {
+  width: 100%;
+  max-width: 480px;
+  height: 100vh;
+  max-height: 840px;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: 0 8px 24px rgba(240, 98, 146, 0.2);
+  border-radius: 20px;
+  overflow: hidden;
+  border: 4px solid #f8bbd0;
+}
 
-    /* 画面切り替え */
-    .screen {
-      display: none;
-      flex-direction: column;
-      height: 100%;
-      padding: 20px;
-    }
+/* 画面切り替え */
+.screen {
+  display: none;
+  flex-direction: column;
+  height: 100%;
+  padding: 20px;
+}
 
-    .screen.active {
-      display: flex !important;
-    }
+.screen.active {
+  display: flex !important;
+}
 
-    /* メニュー画面 */
-    #menu-screen {
-      position: relative;
-      width: 100%;
-      align-items: center;
-    }
+/* メニュー画面 */
+#menu-screen {
+  position: relative;
+  width: 100%;
+  align-items: center;
+}
 
-    .app-title {
-      font-size: 2.5rem;
-      color: #ff4081;
-      font-weight: bold;
-      margin-top: 20px;
-      margin-bottom: 20px;
-      text-shadow: 2px 2px 0px #f8bbd0;
-    }
+.app-title {
+  font-size: 2.5rem;
+  color: #ff4081;
+  font-weight: bold;
+  margin-top: 20px;
+  margin-bottom: 20px;
+  text-shadow: 2px 2px 0px #f8bbd0;
+}
 
-    .profile-box {
-      width: 100%;
-      background: #fff0f5;
-      border: 3px dashed #ff80ab;
-      border-radius: 16px;
-      padding: 15px;
-      text-align: center;
-      margin-bottom: 20px;
-    }
+.profile-box {
+  width: 100%;
+  background: #fff0f5;
+  border: 3px dashed #ff80ab;
+  border-radius: 16px;
+  padding: 15px;
+  text-align: center;
+  margin-bottom: 20px;
+}
 
-    .avatar-area {
-      position: relative;
-      width: 80px;
-      height: 80px;
-      margin: 0 auto 10px;
-      cursor: pointer;
-    }
+.avatar-area {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 10px;
+  cursor: pointer;
+}
 
-    .avatar-img {
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
-      background-color: #ffcdd2;
-      object-fit: cover;
-      border: 3px solid #fff;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    }
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-color: #ffcdd2;
+  object-fit: cover;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
 
-    .player-name-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
+.player-name-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
 
-    .player-name {
-      font-size: 1.2rem;
-      font-weight: bold;
-      color: #c2185b;
-    }
+.player-name {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #c2185b;
+}
 
-    .btn-edit-name {
-      background: #ff80ab;
-      color: white;
-      border: none;
-      border-radius: 12px;
-      padding: 2px 8px;
-      font-size: 0.75rem;
-      cursor: pointer;
-    }
+.btn-edit-name {
+  background: #ff80ab;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
 
-    .user-stats {
-      display: flex;
-      justify-content: space-around;
-      font-weight: bold;
-      color: #880e4f;
-      background: rgba(255, 255, 255, 0.6);
-      padding: 6px;
-      border-radius: 10px;
-    }
+.user-stats {
+  display: flex;
+  justify-content: space-around;
+  font-weight: bold;
+  color: #880e4f;
+  background: rgba(255, 255, 255, 0.6);
+  padding: 6px;
+  border-radius: 10px;
+}
 
-    .menu-btn-group {
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      margin-top: auto;
-      margin-bottom: 20px;
-    }
+.menu-btn-group {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: auto;
+  margin-bottom: 20px;
+}
 
-    .btn-yuru {
-      padding: 14px;
-      border: none;
-      border-radius: 25px;
-      font-size: 1.1rem;
-      font-weight: bold;
-      cursor: pointer;
-      box-shadow: 0 4px 0px rgba(0,0,0,0.1);
-      transition: transform 0.1s;
-    }
+.btn-yuru {
+  padding: 14px;
+  border: none;
+  border-radius: 25px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 4px 0px rgba(0,0,0,0.1);
+  transition: transform 0.1s;
+}
 
-    .btn-yuru:active {
-      transform: translateY(2px);
-      box-shadow: none;
-    }
+.btn-yuru:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}
 
-    .btn-pink { background: #ff4081; color: white; }
-    .btn-light-pink { background: #ff80ab; color: white; }
-    .btn-purple { background: #ba68c8; color: white; }
-    .btn-gray { background: #e0e0e0; color: #616161; }
+.btn-pink { background: #ff4081; color: white; }
+.btn-light-pink { background: #ff80ab; color: white; }
+.btn-purple { background: #ba68c8; color: white; }
+.btn-gray { background: #e0e0e0; color: #616161; }
 
-    /* マッチング画面 */
-    .matching-box {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      height: 100%;
-      color: #ff4081;
-    }
+/* マッチング画面 */
+.matching-box {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  color: #ff4081;
+}
 
-    .yuru-loader {
-      width: 50px;
-      height: 50px;
-      border: 5px solid #f8bbd0;
-      border-top: 5px solid #ff4081;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-bottom: 20px;
-    }
+.yuru-loader {
+  width: 50px;
+  height: 50px;
+  border: 5px solid #f8bbd0;
+  border-top: 5px solid #ff4081;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
 
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 
-    /* バトル画面 */
-    .battle-header {
-      background: #fff0f5;
-      padding: 10px;
-      border-radius: 12px;
-      border: 2px solid #ff80ab;
-      margin-bottom: 10px;
-    }
+/* バトル画面 */
+.battle-header {
+  background: #fff0f5;
+  padding: 10px;
+  border-radius: 12px;
+  border: 2px solid #ff80ab;
+  margin-bottom: 10px;
+}
 
-    .timer-display {
-      text-align: center;
-      font-size: 1.1rem;
-      font-weight: bold;
-      color: #ff4081;
-    }
+.timer-display {
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #ff4081;
+}
 
-    .theme-box {
-      text-align: center;
-      font-size: 0.95rem;
-      font-weight: bold;
-      color: #880e4f;
-      margin-top: 4px;
-    }
+.theme-box {
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: bold;
+  color: #880e4f;
+  margin-top: 4px;
+}
 
-    .hp-status-container {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
+.hp-status-container {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
 
-    .hp-card {
-      flex: 1;
-      background: #fff3e0;
-      border: 2px solid #ffe0b2;
-      padding: 8px;
-      border-radius: 10px;
-    }
+.hp-card {
+  flex: 1;
+  background: #fff3e0;
+  border: 2px solid #ffe0b2;
+  padding: 8px;
+  border-radius: 10px;
+}
 
-    .hp-bar-bg {
-      width: 100%;
-      height: 12px;
-      background: #ffe0b2;
-      border-radius: 6px;
-      overflow: hidden;
-      margin-top: 4px;
-    }
+.hp-bar-bg {
+  width: 100%;
+  height: 12px;
+  background: #ffe0b2;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-top: 4px;
+}
 
-    .hp-bar-fill {
-      height: 100%;
-      background: #ff9800;
-      width: 100%;
-      transition: width 0.3s;
-    }
+.hp-bar-fill {
+  height: 100%;
+  background: #ff9800;
+  width: 100%;
+  transition: width 0.3s;
+}
 
-    .chat-timeline {
-      flex: 1;
-      background: #fafafa;
-      border: 2px solid #f0f0f0;
-      border-radius: 12px;
-      padding: 12px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
+.chat-timeline {
+  flex: 1;
+  background: #fafafa;
+  border: 2px solid #f0f0f0;
+  border-radius: 12px;
+  padding: 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
 
-    .msg-bubble {
-      max-width: 80%;
-      padding: 8px 12px;
-      border-radius: 16px;
-      font-size: 0.9rem;
-      word-break: break-all;
-    }
+.msg-bubble {
+  max-width: 80%;
+  padding: 8px 12px;
+  border-radius: 16px;
+  font-size: 0.9rem;
+  word-break: break-all;
+}
 
-    .msg-self {
-      align-self: flex-end;
-      background-color: #ff80ab;
-      color: white;
-      border-bottom-right-radius: 4px;
-    }
+.msg-self {
+  align-self: flex-end;
+  background-color: #ff80ab;
+  color: white;
+  border-bottom-right-radius: 4px;
+}
 
-    .msg-opponent {
-      align-self: flex-start;
-      background-color: #ffffff;
-      color: #4a4a4a;
-      border: 2px solid #f8bbd0;
-      border-bottom-left-radius: 4px;
-    }
+.msg-opponent {
+  align-self: flex-start;
+  background-color: #ffffff;
+  color: #4a4a4a;
+  border: 2px solid #f8bbd0;
+  border-bottom-left-radius: 4px;
+}
 
-    .msg-sender {
-      font-size: 0.7rem;
-      opacity: 0.8;
-      margin-bottom: 2px;
-    }
+.msg-sender {
+  font-size: 0.7rem;
+  opacity: 0.8;
+  margin-bottom: 2px;
+}
 
-    .typing-indicator {
-      font-size: 0.8rem;
-      color: #ba68c8;
-      height: 16px;
-      margin-bottom: 4px;
-    }
+.typing-indicator {
+  font-size: 0.8rem;
+  color: #ba68c8;
+  height: 16px;
+  margin-bottom: 4px;
+}
 
-    .input-area {
-      display: flex;
-      gap: 6px;
-    }
+.input-area {
+  display: flex;
+  gap: 6px;
+}
 
-    .input-area input {
-      flex: 1;
-      padding: 10px;
-      border-radius: 20px;
-      border: 2px solid #ff80ab;
-      outline: none;
-    }
+.input-area input {
+  flex: 1;
+  padding: 10px;
+  border-radius: 20px;
+  border: 2px solid #ff80ab;
+  outline: none;
+}
 
-    /* モーダル */
-    .modal-overlay {
-      display: none;
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0, 0, 0, 0.4);
-      justify-content: center;
-      align-items: center;
-      z-index: 100;
-    }
+/* モーダル */
+.modal-overlay {
+  display: none;
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
 
-    .modal-content {
-      background: white;
-      padding: 20px;
-      border-radius: 16px;
-      width: 85%;
-      border: 3px solid #ff80ab;
-      text-align: center;
-    }
+.modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 16px;
+  width: 85%;
+  border: 3px solid #ff80ab;
+  text-align: center;
+}
 
-    .modal-title {
-      font-size: 1.2rem;
-      font-weight: bold;
-      color: #ff4081;
-      margin-bottom: 12px;
-    }
+.modal-title {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #ff4081;
+  margin-bottom: 12px;
+}
 
-    .ranking-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 15px;
-    }
+.ranking-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 15px;
+}
 
-    .ranking-table th, .ranking-table td {
-      padding: 8px;
-      border-bottom: 1px solid #f8bbd0;
-      font-size: 0.85rem;
-    }
+.ranking-table th, .ranking-table td {
+  padding: 8px;
+  border-bottom: 1px solid #f8bbd0;
+  font-size: 0.85rem;
+}
 
-    .ranking-table th {
-      background-color: #fff0f5;
-      color: #c2185b;
-    }
-  </style>
+.ranking-table th {
+  background-color: #fff0f5;
+  color: #c2185b;
+}
+</style>
 </head>
 <body>
 
@@ -371,7 +371,6 @@
     <div class="menu-btn-group">
       <button class="btn-yuru btn-pink" onclick="startMatching()">オンライン対戦</button>
       <button class="btn-yuru btn-light-pink" onclick="openRankingModal()">ランキング</button>
-      <button class="btn-yuru btn-purple" onclick="showTitles()">称号（準備中）</button>
     </div>
   </div>
 
@@ -435,27 +434,16 @@
 </div>
 
 <script>
-  // 1. 端末固有IDの自動生成・保存
-// 過去に使われていた可能性のある保存キーを順番にチェックして復元する処理
   function getOrCreateUserId() {
-    // 1. まず現在のキーを確認
-    let userId = localStorage.getItem('yururon_user_id');
+    let userId = localStorage.getItem('yururon_user_id') || 
+                 localStorage.getItem('user_id') || 
+                 localStorage.getItem('userId');
     
-    // 2. なければ、過去の旧キー（user_id や userId）に残っていないか確認
-    if (!userId) {
-      userId = localStorage.getItem('user_id') || localStorage.getItem('userId');
-      if (userId) {
-        // 旧キーで見つかったら、現在のキーに保存し直して引き継ぐ
-        localStorage.setItem('yururon_user_id', userId);
-      }
-    }
-    
-    // 3. どこにも保存されていなければ完全新規発行
     if (!userId) {
       userId = 'user_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
-      localStorage.setItem('yururon_user_id', userId);
     }
     
+    localStorage.setItem('yururon_user_id', userId);
     return userId;
   }
 
@@ -466,7 +454,6 @@
   let currentRoomId = null;
   let isTypingTimer = null;
 
-  // サーバー接続時に端末IDを送信してユーザーデータ読み込み
   socket.on('connect', () => {
     socket.emit('auth_user', { userId: userId });
   });
@@ -485,14 +472,11 @@
     document.getElementById(screenId).classList.add('active');
   }
 
-  // 名前変更処理
   function changeName() {
     const input = prompt("新しいプレイヤー名を入力してください（10文字以内）:", userName);
     if (input && input.trim() !== "") {
       userName = input.trim().substring(0, 10);
       document.getElementById('player-name-disp').innerText = userName;
-      
-      // サーバー側に名前更新を送信
       socket.emit('update_name', { name: userName });
     }
   }
@@ -512,16 +496,11 @@
     }
   }
 
-  function showTitles() {
-    alert("称号機能は今後のアップデートで追加されます！");
-  }
-
   function startMatching() {
     showScreen('matching-screen');
     socket.emit('join_match', { name: userName });
   }
 
-  // ランキング取得処理
   function openRankingModal() {
     const body = document.getElementById('ranking-modal-body');
     body.innerText = "最新データを読み込み中...";
@@ -568,7 +547,6 @@
     body.innerHTML = html;
   });
 
-  // バトル開始処理
   socket.on('match_found', (data) => {
     currentRoomId = data.roomId;
     document.getElementById('theme-display').innerText = `お題: ${data.theme}`;
@@ -576,7 +554,6 @@
     showScreen('battle-screen');
   });
 
-  // HP & タイマー更新
   socket.on('tick_status', (data) => {
     const timerElem = document.getElementById('timer-display');
     const m = Math.floor(data.timeLeft / 60).toString().padStart(2, '0');
@@ -599,12 +576,11 @@
         document.getElementById('p2-hp-bar').style.width = `${(oppData.hp / 10000) * 100}%`;
 
         const typingElem = document.getElementById('typing-indicator');
-        typingElem.innerText = oppData.isTyping ? `${oppData.name} が入力中だみョン...` : '';
+        typingElem.innerText = oppData.isTyping ? `${oppData.name} が入力中...` : '';
       }
     }
   });
 
-  // チャット機能
   const chatInput = document.getElementById('chat-input');
   
   function sendMessage() {
@@ -647,7 +623,6 @@
     }
   }
 
-  // ゲーム終了（切断・暴言KICK対応）
   socket.on('game_over', (data) => {
     showScreen('menu-screen');
     let title = "試合終了だみョン！";
