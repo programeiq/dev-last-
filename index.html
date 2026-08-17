@@ -3,53 +3,44 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>レスババトル ONLINE</title>
+  <title>レスバONLINE</title>
   <style>
-    :root {
-      --bg-color: #0f172a;
-      --card-bg: #1e293b;
-      --text-main: #f8fafc;
-      --text-sub: #94a3b8;
-      --accent-red: #ef4444;
-      --accent-blue: #3b82f6;
-      --accent-green: #10b981;
-      --border-color: #334155;
-    }
-
+    /* 全体設定 */
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
     }
 
     body {
-      background-color: var(--bg-color);
-      color: var(--text-main);
+      font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+      background-color: #f0f2f5;
+      color: #333;
       display: flex;
       justify-content: center;
       align-items: center;
       min-height: 100vh;
+    }
+
+    #app {
+      width: 100%;
+      max-width: 450px;
+      height: 100vh;
+      max-height: 800px;
+      background-color: #ffffff;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      border-radius: 16px;
       overflow: hidden;
     }
 
-    .container {
-      width: 100%;
-      max-width: 600px;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      background-color: var(--card-bg);
-      box-shadow: 0 0 20px rgba(0,0,0,0.5);
-      position: relative;
-    }
-
-    /* 画面切り替え用のクラス */
+    /* 画面切り替え */
     .screen {
       display: none;
       flex-direction: column;
       height: 100%;
-      width: 100%;
       padding: 20px;
     }
 
@@ -57,89 +48,107 @@
       display: flex;
     }
 
-    /* === 1. メニュー画面 === */
-    .menu-title {
-      font-size: 2rem;
+    /* タイトル画面 */
+    .title-area {
       text-align: center;
-      margin-top: 40px;
+      margin-top: 30px;
       margin-bottom: 20px;
-      color: var(--accent-red);
-      font-weight: bold;
-      text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
     }
 
-    .status-card {
-      background: var(--border-color);
-      border-radius: 8px;
+    .title-area h1 {
+      font-size: 2.4rem;
+      color: #ff4757;
+      font-weight: 800;
+    }
+
+    .profile-card {
+      background: #f8f9fa;
+      border: 2px solid #e9ecef;
+      border-radius: 12px;
       padding: 15px;
-      margin-bottom: 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .input-group {
+      text-align: center;
       margin-bottom: 20px;
     }
 
-    .input-group label {
-      display: block;
-      margin-bottom: 8px;
-      color: var(--text-sub);
-      font-size: 0.9rem;
-    }
-
-    .input-group input {
-      width: 100%;
-      padding: 12px;
-      border-radius: 6px;
-      border: 1px solid var(--border-color);
-      background-color: var(--bg-color);
-      color: var(--text-main);
+    .profile-card input {
+      width: 80%;
+      padding: 10px;
+      margin-top: 10px;
+      border: 2px solid #ced4da;
+      border-radius: 8px;
       font-size: 1rem;
+      text-align: center;
       outline: none;
     }
 
+    .profile-card input:focus {
+      border-color: #ff4757;
+    }
+
+    .stats {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 12px;
+      font-weight: bold;
+      color: #495057;
+    }
+
+    .menu-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: auto;
+      margin-bottom: 30px;
+    }
+
     .btn {
-      width: 100%;
       padding: 14px;
       border: none;
-      border-radius: 6px;
-      font-size: 1.1rem;
+      border-radius: 10px;
+      font-size: 1.05rem;
       font-weight: bold;
       cursor: pointer;
-      transition: background 0.2s, transform 0.1s;
-      margin-bottom: 10px;
+      transition: background-color 0.2s, transform 0.1s;
     }
 
     .btn:active {
       transform: scale(0.98);
     }
 
-    .btn-primary {
-      background-color: var(--accent-red);
+    .btn-main {
+      background-color: #ff4757;
       color: white;
     }
 
-    .btn-secondary {
-      background-color: var(--border-color);
-      color: var(--text-main);
+    .btn-sub {
+      background-color: #e9ecef;
+      color: #495057;
     }
 
-    /* === 2. 待機画面 === */
+    .btn-danger {
+      background-color: #ff6b81;
+      color: white;
+      padding: 8px 12px;
+      font-size: 0.85rem;
+    }
+
+    /* マッチング画面 */
     .matching-box {
-      margin: auto;
-      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100%;
     }
 
-    .spinner {
-      width: 50px;
-      height: 50px;
-      border: 5px solid var(--border-color);
-      border-top: 5px solid var(--accent-red);
+    .loader {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #ff4757;
       border-radius: 50%;
+      width: 45px;
+      height: 45px;
       animation: spin 1s linear infinite;
-      margin: 0 auto 20px auto;
+      margin-bottom: 20px;
     }
 
     @keyframes spin {
@@ -147,533 +156,478 @@
       100% { transform: rotate(360deg); }
     }
 
-    /* === 3. バトル画面 === */
+    /* バトル画面 */
     .battle-header {
-      border-bottom: 1px solid var(--border-color);
-      padding-bottom: 10px;
+      background: #f8f9fa;
+      padding: 12px;
+      border-radius: 10px;
       margin-bottom: 10px;
+      border: 1px solid #e9ecef;
     }
 
-    .theme-box {
-      background-color: var(--bg-color);
-      padding: 10px;
-      border-radius: 6px;
+    .timer {
       text-align: center;
+      font-size: 1.1rem;
       font-weight: bold;
-      color: #f59e0b;
-      margin-bottom: 10px;
-      font-size: 0.95rem;
-    }
-
-    .timer-display {
-      text-align: center;
-      font-size: 1.2rem;
-      font-weight: bold;
-      color: var(--accent-red);
-      margin-bottom: 10px;
-    }
-
-    .hp-bars {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-
-    .hp-box {
-      flex: 1;
-    }
-
-    .hp-label {
-      font-size: 0.8rem;
-      display: flex;
-      justify-content: space-between;
+      color: #ff4757;
       margin-bottom: 4px;
     }
 
-    .hp-bar-outer {
-      width: 100%;
-      height: 12px;
-      background-color: var(--border-color);
-      border-radius: 6px;
-      overflow: hidden;
+    .theme {
+      text-align: center;
+      font-size: 0.95rem;
+      font-weight: bold;
+      color: #2f3542;
     }
 
-    .hp-bar-inner {
-      height: 100%;
-      width: 100%;
-      transition: width 0.3s ease;
-    }
-
-    .hp-left { background-color: var(--accent-blue); }
-    .hp-right { background-color: var(--accent-red); }
-
-    .chat-timeline {
-      flex: 1;
-      overflow-y: auto;
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      padding: 10px;
-      background-color: var(--bg-color);
+    .status-bars {
       display: flex;
-      flex-direction: column;
       gap: 10px;
       margin-bottom: 10px;
     }
 
-    .msg-bubble {
-      max-width: 80%;
-      padding: 8px 12px;
+    .player-status {
+      flex: 1;
+      background: #f1f2f6;
+      padding: 8px;
       border-radius: 8px;
-      font-size: 0.95rem;
+    }
+
+    .bar-bg {
+      width: 100%;
+      height: 10px;
+      background: #dfe4ea;
+      border-radius: 5px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+
+    .bar-fill {
+      height: 100%;
+      background: #2ed573;
+      width: 100%;
+      transition: width 0.3s;
+    }
+
+    .chat-area {
+      flex: 1;
+      background: #f1f2f6;
+      border-radius: 10px;
+      padding: 12px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .chat-bubble {
+      max-width: 80%;
+      padding: 10px 14px;
+      border-radius: 14px;
+      font-size: 0.9rem;
+      line-height: 1.4;
       word-break: break-all;
     }
 
-    .msg-self {
+    .bubble-mine {
       align-self: flex-end;
-      background-color: #1e3a8a;
+      background-color: #ff4757;
       color: white;
+      border-bottom-right-radius: 2px;
     }
 
-    .msg-opponent {
+    .bubble-other {
       align-self: flex-start;
-      background-color: var(--border-color);
-      color: white;
+      background-color: #ffffff;
+      color: #2f3542;
+      border: 1px solid #e4e7eb;
+      border-bottom-left-radius: 2px;
     }
 
-    .msg-sender {
+    .sender-name {
       font-size: 0.75rem;
-      color: var(--text-sub);
+      opacity: 0.8;
       margin-bottom: 2px;
     }
 
-    .typing-indicator {
+    .typing-text {
       font-size: 0.8rem;
-      color: var(--text-sub);
-      font-style: italic;
-      height: 18px;
+      color: #747d8c;
+      height: 16px;
+      margin-bottom: 4px;
     }
 
-    .input-area {
+    .input-box {
       display: flex;
-      gap: 8px;
+      gap: 6px;
     }
 
-    .input-area input {
+    .input-box input {
       flex: 1;
       padding: 10px;
-      border-radius: 6px;
-      border: 1px solid var(--border-color);
-      background-color: var(--bg-color);
-      color: var(--text-main);
+      border-radius: 8px;
+      border: 1px solid #ced4da;
       outline: none;
     }
 
-    .btn-send {
-      width: 80px;
-      background-color: var(--accent-blue);
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    /* === 4. モーダル / ランキング === */
-    .modal-overlay {
+    /* モーダル */
+    .modal-bg {
       display: none;
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.8);
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.5);
       justify-content: center;
       align-items: center;
-      z-index: 100;
+      z-index: 10;
     }
 
-    .modal-card {
-      background: var(--card-bg);
-      border: 1px solid var(--border-color);
-      width: 85%;
-      max-width: 400px;
-      border-radius: 12px;
+    .modal-body {
+      background: white;
       padding: 20px;
+      border-radius: 12px;
+      width: 80%;
       text-align: center;
     }
 
     .modal-title {
-      font-size: 1.3rem;
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #ff4757;
       margin-bottom: 10px;
-      color: var(--text-main);
     }
 
-    .modal-body {
-      color: var(--text-sub);
-      margin-bottom: 20px;
-      font-size: 0.95rem;
-      white-space: pre-wrap;
-    }
-
-    .ranking-list {
+    .ranking-container {
+      max-height: 180px;
+      overflow-y: auto;
       text-align: left;
       margin-bottom: 15px;
-      max-height: 200px;
-      overflow-y: auto;
     }
 
-    .ranking-item {
+    .rank-row {
+      padding: 6px 0;
+      border-bottom: 1px solid #eee;
       display: flex;
       justify-content: space-between;
-      padding: 8px 0;
-      border-bottom: 1px solid var(--border-color);
-      font-size: 0.9rem;
     }
   </style>
 </head>
 <body>
 
-  <div class="container">
-
-    <!-- 1. メニュー画面 -->
-    <div id="menu-screen" class="screen active">
-      <h1 class="menu-title">レスババトル ONLINE</h1>
-
-      <div class="status-card">
-        <div>
-          <div style="font-size: 0.8rem; color: var(--text-sub);">プレイヤー情報</div>
-          <div id="user-display-level" style="font-size: 1.2rem; font-weight: bold;">Lv.1</div>
-        </div>
-        <div>
-          <span style="font-size: 0.8rem; color: var(--text-sub);">通算勝利数: </span>
-          <span id="user-display-wins" style="font-weight: bold; color: var(--accent-green);">0 勝</span>
-        </div>
-      </div>
-
-      <div class="input-group">
-        <label for="username-input">プレイヤー名</label>
-        <input type="text" id="username-input" placeholder="名前を入力（初期: 名無し）" maxlength="10">
-      </div>
-
-      <button id="btn-match" class="btn btn-primary">対戦を開始する</button>
-      <button id="btn-ranking" class="btn btn-secondary">ランキング</button>
+<div id="app">
+  <!-- メニュー画面 -->
+  <div id="menu-screen" class="screen active">
+    <div class="title-area">
+      <h1>レスバ ONLINE</h1>
     </div>
 
-    <!-- 2. マッチング待機画面 -->
-    <div id="matching-screen" class="screen">
-      <div class="matching-box">
-        <div class="spinner"></div>
-        <h2>対戦相手を探しています...</h2>
-        <p style="color: var(--text-sub); margin-top: 10px;">しばらくお待ちください</p>
+    <div class="profile-card">
+      <div>プレイヤー設定</div>
+      <input type="text" id="username-input" maxlength="10" placeholder="名前を入力">
+      <div class="stats">
+        <span id="user-display-level">Lv.1</span>
+        <span id="user-display-wins">0 勝</span>
       </div>
     </div>
 
-    <!-- 3. バトル画面 -->
-    <div id="battle-screen" class="screen">
-      <div class="battle-header">
-        <div id="theme-display" class="theme-box">お題: 読み込み中...</div>
-        <div id="timer-display" class="timer-display">残り時間 03:00</div>
-
-        <div class="hp-bars">
-          <div class="hp-box">
-            <div class="hp-label">
-              <span id="p1-name">あなた</span>
-              <span id="p1-hp-text">10000</span>
-            </div>
-            <div class="hp-bar-outer">
-              <div id="p1-hp-bar" class="hp-bar-inner hp-left"></div>
-            </div>
-          </div>
-          <div class="hp-box">
-            <div class="hp-label">
-              <span id="p2-name">相手</span>
-              <span id="p2-hp-text">10000</span>
-            </div>
-            <div class="hp-bar-outer">
-              <div id="p2-hp-bar" class="hp-bar-inner hp-right"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div id="chat-timeline" class="chat-timeline"></div>
-
-      <div id="typing-indicator" class="typing-indicator"></div>
-
-      <div class="input-area">
-        <input type="text" id="chat-input" placeholder="反論を入力（Enterで送信）..." autocomplete="off">
-        <button id="btn-send" class="btn-send">送信</button>
-        <button id="btn-surrender" class="btn" style="width: auto; background: var(--border-color); padding: 0 10px; font-size: 0.8rem;">降参</button>
-      </div>
+    <div class="menu-buttons">
+      <button id="btn-match" class="btn btn-main">対戦をはじめる</button>
+      <button id="btn-ranking" class="btn btn-sub">ランキング</button>
     </div>
-
-    <!-- 共通モーダル（通知 / 結果表示用） -->
-    <div id="notice-modal" class="modal-overlay">
-      <div class="modal-card">
-        <h3 id="modal-title" class="modal-title">通知</h3>
-        <p id="modal-body" class="modal-body">メッセージ内容</p>
-        <button id="modal-close-btn" class="btn btn-primary">OK</button>
-      </div>
-    </div>
-
-    <!-- ランキング用モーダル -->
-    <div id="ranking-modal" class="modal-overlay">
-      <div class="modal-card">
-        <h3 class="modal-title">🏆 通算勝利ランキング</h3>
-        <div id="ranking-list" class="ranking-list"></div>
-        <button id="ranking-close-btn" class="btn btn-secondary">閉じる</button>
-      </div>
-    </div>
-
   </div>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script>
-    // --------------------------------------------------
-    // 1. ユーザー固有IDの獲得・管理（端末ストレージ利用）
-    // --------------------------------------------------
-    function getOrCreateUserId() {
-      let userId = localStorage.getItem('my_game_user_id');
-      if (!userId) {
-        userId = 'user_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
-        localStorage.setItem('my_game_user_id', userId);
-      }
-      return userId;
+  <!-- マッチング画面 -->
+  <div id="matching-screen" class="screen">
+    <div class="matching-box">
+      <div class="loader"></div>
+      <p>対戦相手を探しています...</p>
+    </div>
+  </div>
+
+  <!-- バトル画面 -->
+  <div id="battle-screen" class="screen">
+    <div class="battle-header">
+      <div id="timer-display" class="timer">残り時間 03:00</div>
+      <div id="theme-display" class="theme">お題を取得中...</div>
+    </div>
+
+    <div class="status-bars">
+      <div class="player-status">
+        <div id="p1-name" style="font-size: 0.8rem;">あなた</div>
+        <div style="font-size: 0.75rem;">HP: <span id="p1-hp-text">10000</span></div>
+        <div class="bar-bg"><div id="p1-hp-bar" class="bar-fill"></div></div>
+      </div>
+      <div class="player-status">
+        <div id="p2-name" style="font-size: 0.8rem;">相手</div>
+        <div style="font-size: 0.75rem;">HP: <span id="p2-hp-text">10000</span></div>
+        <div class="bar-bg"><div id="p2-hp-bar" class="bar-fill"></div></div>
+      </div>
+    </div>
+
+    <div id="chat-timeline" class="chat-area"></div>
+    <div id="typing-indicator" class="typing-text"></div>
+
+    <div class="input-box">
+      <input type="text" id="chat-input" placeholder="反論を入力..." maxlength="100">
+      <button id="btn-send" class="btn btn-main" style="padding: 10px 14px;">送信</button>
+      <button id="btn-surrender" class="btn btn-danger">降参</button>
+    </div>
+  </div>
+
+  <!-- モーダル (通知用) -->
+  <div id="notice-modal" class="modal-bg">
+    <div class="modal-body">
+      <div id="modal-title" class="modal-title">通知</div>
+      <div id="modal-text" style="margin-bottom: 15px; white-space: pre-wrap;"></div>
+      <button id="modal-close-btn" class="btn btn-main" style="width: 100%;">閉じる</button>
+    </div>
+  </div>
+
+  <!-- モーダル (ランキング用) -->
+  <div id="ranking-modal" class="modal-bg">
+    <div class="modal-body">
+      <div class="modal-title">🏆 ランキング</div>
+      <div id="ranking-list" class="ranking-container"></div>
+      <button id="ranking-close-btn" class="btn btn-sub" style="width: 100%;">閉じる</button>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  function getOrCreateUserId() {
+    let userId = localStorage.getItem('yururon_user_id');
+    if (!userId) {
+      userId = 'user_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+      localStorage.setItem('yururon_user_id', userId);
     }
+    return userId;
+  }
 
-    const userId = getOrCreateUserId();
-    const socket = io();
+  const userId = getOrCreateUserId();
+  const socket = io();
 
-    let currentRoomId = null;
-    let isTypingTimer = null;
+  let currentRoomId = null;
+  let isTypingTimer = null;
 
-    // 接続時にサーバーへ自身のIDを認識させる
-    socket.on('connect', () => {
-      socket.emit('auth_user', { userId: userId });
-    });
+  socket.on('connect', () => {
+    socket.emit('auth_user', { userId: userId });
+  });
 
-    // サーバーから読み込まれたユーザーデータを受信
-    socket.on('user_data_loaded', (userData) => {
-      document.getElementById('user-display-level').innerText = `Lv.${userData.level}`;
-      document.getElementById('user-display-wins').innerText = `${userData.wins} 勝`;
-      if (userData.name && userData.name !== "名無し") {
-        document.getElementById('username-input').value = userData.name;
-      }
-    });
+  socket.on('user_data_loaded', (userData) => {
+    const levelElem = document.getElementById('user-display-level');
+    const winsElem = document.getElementById('user-display-wins');
+    const nameInput = document.getElementById('username-input');
 
-    // --------------------------------------------------
-    // 2. 画面切り替え & モーダルヘルパー
-    // --------------------------------------------------
-    function showScreen(screenId) {
-      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-      document.getElementById(screenId).classList.add('active');
+    if (levelElem) levelElem.innerText = `Lv.${userData.level}`;
+    if (winsElem) winsElem.innerText = `${userData.wins} 勝`;
+    if (nameInput && userData.name && userData.name !== "名無し") {
+      nameInput.value = userData.name;
     }
+  });
 
-    function showNoticeModal(title, body) {
-      document.getElementById('modal-title').innerText = title;
-      document.getElementById('modal-body').innerText = body;
-      document.getElementById('notice-modal').style.display = 'flex';
-    }
+  function showScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    const target = document.getElementById(screenId);
+    if (target) target.classList.add('active');
+  }
 
-    document.getElementById('modal-close-btn').addEventListener('click', () => {
+  function showNoticeModal(title, text) {
+    const titleElem = document.getElementById('modal-title');
+    const textElem = document.getElementById('modal-text');
+    const modalElem = document.getElementById('notice-modal');
+
+    if (titleElem) titleElem.innerText = title;
+    if (textElem) textElem.innerText = text;
+    if (modalElem) modalElem.style.display = 'flex';
+  }
+
+  const closeBtn = document.getElementById('modal-close-btn');
+  if (closeBtn) {
+    closeBtn.onclick = () => {
       document.getElementById('notice-modal').style.display = 'none';
-    });
+    };
+  }
 
-    document.getElementById('ranking-close-btn').addEventListener('click', () => {
+  const rankCloseBtn = document.getElementById('ranking-close-btn');
+  if (rankCloseBtn) {
+    rankCloseBtn.onclick = () => {
       document.getElementById('ranking-modal').style.display = 'none';
-    });
+    };
+  }
 
-    // --------------------------------------------------
-    // 3. メニュー画面の処理
-    // --------------------------------------------------
-    const usernameInput = document.getElementById('username-input');
-
-    // 名前入力変更時にリアルタイムで保存依頼
+  const usernameInput = document.getElementById('username-input');
+  if (usernameInput) {
     usernameInput.addEventListener('change', () => {
-      const newName = usernameInput.value.trim() || "名無し";
-      socket.emit('update_name', { name: newName });
+      socket.emit('update_name', { name: usernameInput.value.trim() || "名無し" });
     });
+  }
 
-    document.getElementById('btn-match').addEventListener('click', () => {
-      const name = usernameInput.value.trim() || "名無し";
+  const btnMatch = document.getElementById('btn-match');
+  if (btnMatch) {
+    btnMatch.onclick = () => {
+      const name = usernameInput ? usernameInput.value.trim() || "名無し" : "名無し";
       showScreen('matching-screen');
       socket.emit('join_match', { name: name });
-    });
+    };
+  }
 
-    document.getElementById('btn-ranking').addEventListener('click', () => {
+  const btnRanking = document.getElementById('btn-ranking');
+  if (btnRanking) {
+    btnRanking.onclick = () => {
       socket.emit('get_ranking');
-    });
+    };
+  }
 
-    socket.on('ranking_data', (rankingList) => {
-      const container = document.getElementById('ranking-list');
-      container.innerHTML = '';
+  socket.on('ranking_data', (rankingList) => {
+    const container = document.getElementById('ranking-list');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    if (rankingList.length === 0) {
+      container.innerHTML = '<div style="text-align:center;">記録がありません</div>';
+    } else {
+      rankingList.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = 'rank-row';
+        div.innerHTML = `
+          <span><strong>#${index + 1}</strong> ${escapeHtml(item.name)} (Lv.${item.level})</span>
+          <span>${item.wins} 勝</span>
+        `;
+        container.appendChild(div);
+      });
+    }
+    document.getElementById('ranking-modal').style.display = 'flex';
+  });
 
-      if (rankingList.length === 0) {
-        container.innerHTML = '<div style="text-align:center; color: var(--text-sub);">まだ記録がありません</div>';
-      } else {
-        rankingList.forEach((item, index) => {
-          const div = document.createElement('div');
-          div.className = 'ranking-item';
-          div.innerHTML = `
-            <span><strong>#${index + 1}</strong> ${escapeHtml(item.name)} (Lv.${item.level})</span>
-            <span style="color: var(--accent-green); font-weight: bold;">${item.wins} 勝</span>
-          `;
-          container.appendChild(div);
-        });
-      }
+  socket.on('match_found', (data) => {
+    currentRoomId = data.roomId;
+    const themeElem = document.getElementById('theme-display');
+    const timelineElem = document.getElementById('chat-timeline');
 
-      document.getElementById('ranking-modal').style.display = 'flex';
-    });
+    if (themeElem) themeElem.innerText = `お題: ${data.theme}`;
+    if (timelineElem) timelineElem.innerHTML = '';
+    showScreen('battle-screen');
+  });
 
-    // --------------------------------------------------
-    // 4. バトル画面の処理
-    // --------------------------------------------------
-    socket.on('match_found', (data) => {
-      currentRoomId = data.roomId;
-      document.getElementById('theme-display').innerText = `お題: ${data.theme}`;
-      document.getElementById('chat-timeline').innerHTML = '';
-      showScreen('battle-screen');
-    });
-
-    // 毎秒のタイマー・HP同期処理
-    socket.on('tick_status', (data) => {
-      // 時間表示
+  socket.on('tick_status', (data) => {
+    const timerElem = document.getElementById('timer-display');
+    if (timerElem) {
       const m = Math.floor(data.timeLeft / 60).toString().padStart(2, '0');
       const s = (data.timeLeft % 60).toString().padStart(2, '0');
-      document.getElementById('timer-display').innerText = `残り時間 ${m}:${s}`;
+      timerElem.innerText = `残り時間 ${m}:${s}`;
+    }
 
-      // HP表示の更新
-      const pIds = Object.keys(data.players);
-      if (pIds.length === 2) {
-        const isMeP1 = pIds[0] === socket.id;
-        const myData = data.players[socket.id];
-        const oppId = pIds.find(id => id !== socket.id);
-        const oppData = data.players[oppId];
+    const pIds = Object.keys(data.players);
+    if (pIds.length === 2) {
+      const myData = data.players[socket.id];
+      const oppId = pIds.find(id => id !== socket.id);
+      const oppData = data.players[oppId];
 
-        if (myData && oppData) {
-          document.getElementById('p1-name').innerText = `${myData.name} (あなた)`;
-          document.getElementById('p1-hp-text').innerText = myData.hp;
-          document.getElementById('p1-hp-bar').style.width = `${(myData.hp / 10000) * 100}%`;
+      if (myData && oppData) {
+        const p1Name = document.getElementById('p1-name');
+        const p1HpText = document.getElementById('p1-hp-text');
+        const p1HpBar = document.getElementById('p1-hp-bar');
+        const p2Name = document.getElementById('p2-name');
+        const p2HpText = document.getElementById('p2-hp-text');
+        const p2HpBar = document.getElementById('p2-hp-bar');
+        const typingElem = document.getElementById('typing-indicator');
 
-          document.getElementById('p2-name').innerText = oppData.name;
-          document.getElementById('p2-hp-text').innerText = oppData.hp;
-          document.getElementById('p2-hp-bar').style.width = `${(oppData.hp / 10000) * 100}%`;
+        if (p1Name) p1Name.innerText = `${myData.name} (あなた)`;
+        if (p1HpText) p1HpText.innerText = myData.hp;
+        if (p1HpBar) p1HpBar.style.width = `${(myData.hp / 10000) * 100}%`;
 
-          // 相手が入力中かどうかのインジケーター表示
-          const typingElem = document.getElementById('typing-indicator');
-          if (oppData.isTyping) {
-            typingElem.innerText = `${oppData.name} が入力中...`;
-          } else {
-            typingElem.innerText = '';
-          }
+        if (p2Name) p2Name.innerText = oppData.name;
+        if (p2HpText) p2HpText.innerText = oppData.hp;
+        if (p2HpBar) p2HpBar.style.width = `${(oppData.hp / 10000) * 100}%`;
+
+        if (typingElem) {
+          typingElem.innerText = oppData.isTyping ? `${oppData.name} が入力中...` : '';
         }
       }
-    });
-
-    // メッセージ送信処理
-    const chatInput = document.getElementById('chat-input');
-    const btnSend = document.getElementById('btn-send');
-
-    function sendMessage() {
-      const msg = chatInput.value.trim();
-      if (!msg || !currentRoomId) return;
-
-      socket.emit('send_message', { roomId: currentRoomId, message: msg });
-      chatInput.value = '';
-      sendTypingStatus(false);
     }
+  });
 
-    btnSend.addEventListener('click', sendMessage);
-    chatInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') sendMessage();
-    });
+  const chatInput = document.getElementById('chat-input');
+  const btnSend = document.getElementById('btn-send');
 
-    // タイピング検知
-    chatInput.addEventListener('input', () => {
+  function sendMessage() {
+    if (!chatInput) return;
+    const msg = chatInput.value.trim();
+    if (!msg || !currentRoomId) return;
+    socket.emit('send_message', { roomId: currentRoomId, message: msg });
+    chatInput.value = '';
+    sendTypingStatus(false);
+  }
+
+  if (btnSend) btnSend.onclick = sendMessage;
+  if (chatInput) {
+    chatInput.onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
+    chatInput.oninput = () => {
       sendTypingStatus(true);
       clearTimeout(isTypingTimer);
-      isTypingTimer = setTimeout(() => {
-        sendTypingStatus(false);
-      }, 1500);
-    });
+      isTypingTimer = setTimeout(() => sendTypingStatus(false), 1500);
+    };
+  }
 
-    function sendTypingStatus(isTyping) {
-      if (currentRoomId) {
-        socket.emit('typing_status', { roomId: currentRoomId, isTyping: isTyping });
-      }
-    }
+  function sendTypingStatus(isTyping) {
+    if (currentRoomId) socket.emit('typing_status', { roomId: currentRoomId, isTyping });
+  }
 
-    // チャット受信処理
-    socket.on('receive_message', (data) => {
-      const timeline = document.getElementById('chat-timeline');
-      const isSelf = data.senderId === socket.id;
+  socket.on('receive_message', (data) => {
+    const timeline = document.getElementById('chat-timeline');
+    if (!timeline) return;
 
-      const bubbleDiv = document.createElement('div');
-      bubbleDiv.className = `msg-bubble ${isSelf ? 'msg-self' : 'msg-opponent'}`;
+    const isSelf = data.senderId === socket.id;
+    const bubbleDiv = document.createElement('div');
+    bubbleDiv.className = `chat-bubble ${isSelf ? 'bubble-mine' : 'bubble-other'}`;
+    bubbleDiv.innerHTML = `<div class="sender-name">${escapeHtml(data.senderName)} (${data.senderSide})</div><div>${escapeHtml(data.message)}</div>`;
 
-      const senderDiv = document.createElement('div');
-      senderDiv.className = 'msg-sender';
-      senderDiv.innerText = `${data.senderName} (${data.senderSide})`;
+    timeline.appendChild(bubbleDiv);
+    timeline.scrollTop = timeline.scrollHeight;
+  });
 
-      const textDiv = document.createElement('div');
-      textDiv.innerText = data.message;
-
-      bubbleDiv.appendChild(senderDiv);
-      bubbleDiv.appendChild(textDiv);
-      timeline.appendChild(bubbleDiv);
-
-      timeline.scrollTop = timeline.scrollHeight;
-    });
-
-    // 降参ボタン
-    document.getElementById('btn-surrender').addEventListener('click', () => {
+  const btnSurrender = document.getElementById('btn-surrender');
+  if (btnSurrender) {
+    btnSurrender.onclick = () => {
       if (currentRoomId && confirm("本当に降参しますか？")) {
         socket.emit('surrender', { roomId: currentRoomId });
       }
-    });
+    };
+  }
 
-    // --------------------------------------------------
-    // 5. ゲーム終了・通知イベント
-    // --------------------------------------------------
-    socket.on('game_over', (data) => {
-      showScreen('menu-screen');
+  socket.on('game_over', (data) => {
+    showScreen('menu-screen');
+    let title = "試合終了";
+    let message = "";
 
-      let title = "試合終了";
-      let message = "";
-
-      if (data.reason === "OPPONENT_KICKED") {
-        title = "🎉 不戦勝！";
-        message = "相手プレイヤーが暴言（NGワード）によりキックされたため、あなたの勝利です！";
-      } else if (data.reason === "DISCONNECTED") {
-        title = "🎉 不戦勝！";
-        message = "相手プレイヤーが通信切断（タブを閉じた等）したため、あなたの勝利です！";
-      } else if (data.reason === "SURRENDER") {
-        title = "試合決着";
-        message = `勝者: ${data.winnerName}\n（降参により決着）`;
-      } else {
-        title = data.winnerName === "DRAW" ? "引き分け！" : `🎉 勝者: ${data.winnerName}`;
-        message = data.reason === "HP_ZERO" ? "HPが0になりました！" : "制限時間が終了しました！";
-      }
-
-      showNoticeModal(title, message);
-
-      // 戦績更新のため、最新のユーザー情報を再取得するリクエストを送信
-      socket.emit('auth_user', { userId: userId });
-    });
-
-    socket.on('kicked_notification', (data) => {
-      showScreen('menu-screen');
-      showNoticeModal("ペナルティ通知", data.reason);
-    });
-
-    // XSS防止用エスケープ関数
-    function escapeHtml(str) {
-      return str.replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
+    if (data.reason === "OPPONENT_KICKED") {
+      title = "🎉 不戦勝！";
+      message = "相手プレイヤーが暴言（NGワード）によりキックされたため、あなたの勝利です！";
+    } else if (data.reason === "DISCONNECTED") {
+      title = "🎉 不戦勝！";
+      message = "相手プレイヤーが通信切断（タブを閉じた等）したため、あなたの勝利です！";
+    } else if (data.reason === "SURRENDER") {
+      title = "試合決着";
+      message = `勝者: ${data.winnerName}\n（降参により決着）`;
+    } else {
+      title = data.winnerName === "DRAW" ? "引き分け！" : `🎉 勝者: ${data.winnerName}`;
+      message = data.reason === "HP_ZERO" ? "HPが0になりました！" : "制限時間が終了しました！";
     }
-  </script>
+
+    showNoticeModal(title, message);
+    socket.emit('auth_user', { userId: userId });
+  });
+
+  socket.on('kicked_notification', (data) => {
+    showScreen('menu-screen');
+    showNoticeModal("ペナルティ通知", data.reason);
+  });
+
+  function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+</script>
 </body>
 </html>
