@@ -325,45 +325,37 @@
   </div>
 
 <script>
-  // 単一の固定キーのみを使用（上書きや別キーでの再作成を防ぐ）
-  const STORAGE_KEY = 'yururon_user_id';
+  const STORAGE_KEY_ID = 'yururon_user_id';
+  const STORAGE_KEY_NAME = 'yururon_user_name';
 
   function getOrCreateUserId() {
-    let savedId = null;
-
-    try {
-      savedId = localStorage.getItem(STORAGE_KEY);
-    } catch (e) {
-      console.warn('localStorageアクセスエラー:', e);
-    }
-
+    let savedId = localStorage.getItem(STORAGE_KEY_ID);
     if (!savedId) {
       savedId = 'user_' + Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
-      try {
-        localStorage.setItem(STORAGE_KEY, savedId);
-      } catch (e) {
-        console.warn('localStorage保存エラー:', e);
-      }
+      localStorage.setItem(STORAGE_KEY_ID, savedId);
     }
     return savedId;
   }
 
   const userId = getOrCreateUserId();
-  const socket = io();
+  // 保存された名前があればそれを読み込み、なければ「名無し」
+  let userName = localStorage.getItem(STORAGE_KEY_NAME) || "名無し";
+  document.getElementById('player-name-disp').innerText = userName;
 
-  let userName = "名無し";
+  const socket = io();
   let currentRoomId = null;
   let isTypingTimer = null;
 
-  // サーバー接続時にユーザーIDを毎回同期する
+  // サーバー接続時に userId と保存されている userName も送信する
   socket.on('connect', () => {
-    socket.emit('auth_user', { userId: userId });
+    socket.emit('auth_user', { userId: userId, name: userName });
   });
 
   socket.on('user_data_loaded', (userData) => {
     if (userData.name) {
       userName = userData.name;
       document.getElementById('player-name-disp').innerText = userName;
+      localStorage.setItem(STORAGE_KEY_NAME, userName);
     }
     document.getElementById('display-box').innerText = `STATUS : READY (Lv.${userData.level || 1} / ${userData.wins || 0}勝)`;
   });
@@ -378,6 +370,9 @@
     if (input && input.trim() !== "") {
       userName = input.trim().substring(0, 10);
       document.getElementById('player-name-disp').innerText = userName;
+      // ブラウザ（localStorage）に保存
+      localStorage.setItem(STORAGE_KEY_NAME, userName);
+      // サーバーにも変更を送信
       socket.emit('update_name', { name: userName });
     }
   }
@@ -543,21 +538,21 @@
     let message = "";
 
     if (data.reason === "OPPONENT_KICKED") {
-      title = "不戦勝！";
+      title = "🎉 不戦勝！";
       message = "相手プレイヤーが暴言（NGワード）によりキックされたため、あなたの勝利です！";
     } else if (data.reason === "DISCONNECTED") {
-      title = " 不戦勝！";
+      title = "🎉 不戦勝！";
       message = "相手プレイヤーが通信切断（タブを閉じた等）したため、あなたの勝利です！";
     } else if (data.reason === "SURRENDER") {
       title = "試合決着";
       message = `勝者: ${data.winnerName}\n（降参により決着）`;
     } else {
-      title = data.winnerName === "DRAW" ? "引き分け！" : ` 勝者: ${data.winnerName}`;
+      title = data.winnerName === "DRAW" ? "引き分け！" : `🎉 勝者: ${data.winnerName}`;
       message = data.reason === "HP_ZERO" ? "HPが0になりました！" : "制限時間が終了しました！";
     }
 
     showNoticeModal(title, message);
-    socket.emit('auth_user', { userId: userId });
+    socket.emit('auth_user', { userId: userId, name: userName });
   });
 
   socket.on('kicked_notification', (data) => {
