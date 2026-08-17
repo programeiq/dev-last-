@@ -35,7 +35,7 @@ io.on('connection', (socket) => {
     wins: 0
   };
 
-  // ★ 名前変更イベントの受信を追加だみョン！
+  // 名前変更イベント
   socket.on('update_name', (data) => {
     const newName = data.name || "名無し";
     socket.userName = newName;
@@ -175,11 +175,32 @@ io.on('connection', (socket) => {
     socket.emit('ranking_data', rankingList);
   });
 
-  // 切断処理
+  // ★ 徹底的に後処理を行う「切断イベント」だみョン！
   socket.on('disconnect', () => {
+    console.log(`ユーザー切断: ${socket.id}`);
+
+    // ① マッチング待ち中にタブを閉じた場合、待機リストを空にする
     if (waitingPlayer && waitingPlayer.id === socket.id) {
       waitingPlayer = null;
     }
+
+    // ② 対戦中にタブを閉じた場合、相手に不戦勝を与えて部屋を破棄する
+    Object.keys(rooms).forEach(roomId => {
+      const room = rooms[roomId];
+      if (room.players[socket.id]) {
+        const opponentId = Object.keys(room.players).find(id => id !== socket.id);
+        const winnerName = room.players[opponentId] ? room.players[opponentId].name : "相手";
+
+        if (opponentId) {
+          recordWin(opponentId);
+        }
+        // 切断による強制終了を通知
+        endGame(roomId, winnerName, "DISCONNECTED");
+      }
+    });
+
+    // ③ 統計データから切断されたIDをクリア（メモリ解放）
+    delete userStats[socket.id];
   });
 });
 
