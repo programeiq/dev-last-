@@ -35,8 +35,7 @@ function saveUserData() {
   }
 }
 
-// 永続化用データベース（サーバー再起動しても保持される）
-// 形式: { "user_xyz123": { name: "名無し", level: 1, wins: 5 } }
+// 永続化用データベース
 const dbUsers = loadUserData();
 
 // メモリ用（アクティブなソケットIDとユーザーIDの紐付け）
@@ -55,14 +54,13 @@ const themes = [
 io.on('connection', (socket) => {
   console.log(`ユーザー接続: ${socket.id}`);
 
-  // ★ PC/スマホ固有のIDを受け取り、データを同期・保存
+  // 固有IDを受け取り、データを同期・保存
   socket.on('auth_user', (data) => {
     const userId = data.userId;
     if (!userId) return;
 
     socketToUserId[socket.id] = userId;
 
-    // 初めてのPCなら初期化、登録済みならデータをロード
     if (!dbUsers[userId]) {
       dbUsers[userId] = {
         name: "名無し",
@@ -72,7 +70,6 @@ io.on('connection', (socket) => {
       saveUserData();
     }
 
-    // クライアントへ現在のステータス（レベルや勝数）を返送
     socket.emit('user_data_loaded', dbUsers[userId]);
   });
 
@@ -84,7 +81,15 @@ io.on('connection', (socket) => {
 
     if (userId && dbUsers[userId]) {
       dbUsers[userId].name = newName;
-      saveUserData(); // ファイルへ保存
+      saveUserData();
+    }
+  });
+
+  // タイピング状態の更新（入力中HP減少しない処理用）
+  socket.on('typing_status', (data) => {
+    const room = rooms[data.roomId];
+    if (room && room.players[socket.id]) {
+      room.players[socket.id].isTyping = data.isTyping;
     }
   });
 
@@ -125,7 +130,7 @@ io.on('connection', (socket) => {
         theme,
         yourSide: "前者",
         opponentName: player2.userName,
-        opponentLevel: 1
+        opponentLevel: dbUsers[socketToUserId[player2.id]]?.level || 1
       });
 
       player2.emit('match_found', {
@@ -133,7 +138,7 @@ io.on('connection', (socket) => {
         theme,
         yourSide: "後者",
         opponentName: player1.userName,
-        opponentLevel: 1
+        opponentLevel: dbUsers[socketToUserId[player1.id]]?.level || 1
       });
 
       startRoomTimer(roomId);
@@ -199,7 +204,7 @@ io.on('connection', (socket) => {
     endGame(data.roomId, winnerName, "SURRENDER");
   });
 
-  // 4. ランキングデータ取得
+  // 4. ランキングデータ取得（勝利数順に10件返す）
   socket.on('get_ranking', () => {
     const rankingList = Object.keys(dbUsers)
       .map(id => ({
@@ -248,6 +253,7 @@ function startRoomTimer(roomId) {
 
     Object.keys(room.players).forEach(pId => {
       const p = room.players[pId];
+      // 入力中でない場合のみ毎秒 1 HP 減少
       if (!p.isTyping) {
         p.hp = Math.max(0, p.hp - 1);
       }
@@ -296,14 +302,13 @@ function startRoomTimer(roomId) {
   }, 1000);
 }
 
-// ★ 勝利数とレベルを記録してファイルに永続保存する関数
+// 勝利数とレベルを記録してファイルに保存
 function recordWin(socketId) {
   const userId = socketToUserId[socketId];
   if (userId && dbUsers[userId]) {
     dbUsers[userId].wins += 1;
-    // 3勝ごとにレベルアップする例（ロジックは自由に変更可能）
     dbUsers[userId].level = Math.floor(dbUsers[userId].wins / 3) + 1;
-    saveUserData(); // ファイルへ保存！
+    saveUserData();
   }
 }
 
