@@ -284,7 +284,7 @@
         <div class="match-info-bar" id="match-enemy-info-bar">相手を待っています</div>
       </div>
     </div>
-    <button class="btn-back" style="margin-top: 20px;" onclick="playButtonSound(); goBackToMenu()">キャンセルして戻る</button>
+    <button class="btn-back" style="margin-top: 20px;" onclick="playButtonSound(); cancelMatching()">キャンセルして戻る</button>
   </div>
 
   <!-- バトル画面 -->
@@ -326,7 +326,7 @@
   </div>
 
   <script>
-    // --- 【効果音（Web Audio API）処理】 ---
+    // Web Audio APIによる効果音処理
     let audioCtx = null;
 
     function initAudio() {
@@ -346,7 +346,6 @@
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
 
-        // ポップなピコッ音の設定
         osc.type = 'sine';
         osc.frequency.setValueAtTime(800, audioCtx.currentTime);
         osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.1);
@@ -364,16 +363,14 @@
       }
     }
 
-    // 初回ユーザー操作時にオーディオ解禁
     window.addEventListener('click', initAudio, { once: true });
     window.addEventListener('touchstart', initAudio, { once: true });
 
-    // --- 【Socket.io ＆ ゲーム通信処理】 ---
+    // Socket.io 通信制御
     const socket = io();
     let currentRoomId = null;
     let typingTimeout = null;
 
-    // 端末固有IDの発行と解禁
     let myUserId = localStorage.getItem('yururon_user_id');
     if (!myUserId) {
       myUserId = 'user_' + Math.random().toString(36).substring(2, 9);
@@ -387,13 +384,11 @@
       document.getElementById('match-my-info-bar').innerText = `Lv.${userData.level} ${userData.name}`;
     });
 
-    // 画面切り替え
     function showScreen(screenId) {
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.getElementById(screenId).classList.add('active');
     }
 
-    // モーダル操作
     function openNoticeModal(title, bodyText) {
       document.getElementById('notice-modal-header').innerText = title;
       document.getElementById('notice-modal-body').innerText = bodyText;
@@ -413,7 +408,6 @@
       document.getElementById(modalId).style.display = 'none';
     }
 
-    // ユーザー変更操作
     function changeName() {
       const currentName = document.getElementById('player-name-disp').innerText;
       const newName = prompt("新しい名前を入力してください:", currentName);
@@ -445,7 +439,6 @@
       openNoticeModal("称号変更", "現在の称号: 初心者\n(対戦を重ねると新しい称号が解禁されます！)");
     }
 
-    // 対戦ロジック
     function startMatching() {
       const name = document.getElementById('player-name-disp').innerText;
       socket.emit('join_match', { name: name });
@@ -454,8 +447,9 @@
       document.getElementById('match-enemy-info-bar').innerText = "WAITING...";
     }
 
-    function goBackToMenu() {
-      location.reload();
+    function cancelMatching() {
+      socket.emit('cancel_match');
+      showScreen('menu-screen');
     }
 
     function handleTyping() {
@@ -484,7 +478,6 @@
       }
     }
 
-    // Socket受信イベント
     socket.on('match_found', (data) => {
       currentRoomId = data.roomId;
       document.getElementById('match-countdown-banner').innerText = "MATCH FOUND!";
@@ -551,7 +544,7 @@
 
     socket.on('ranking_data', (list) => {
       const body = document.getElementById('ranking-modal-body');
-      if (list.length === 0) {
+      if (!list || list.length === 0) {
         body.innerHTML = "<p style='text-align:center;'>ランキングデータがありません</p>";
         return;
       }
