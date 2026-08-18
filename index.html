@@ -372,6 +372,31 @@
       document.getElementById(modalId).style.display = 'none';
     }
 
+    // Web Audio APIの初期化
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playButtonSound() {
+  // ブラウザの自動再生制限対策（ユーザー操作でコンテキストを有効化）
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+
+  osc.type = 'sine'; // 音色（sine, square, triangle, sawtooth）
+  osc.frequency.setValueAtTime(800, audioCtx.currentTime); // 周波数（音の高さ）
+  osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.08); // 音の高さを減衰
+
+  gain.gain.setValueAtTime(0.1, audioCtx.currentTime); // 音量
+  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08); // 音量を減衰
+
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.08); // 0.08秒で停止
+}
     // --- 【プロフ・設定操作】 ---
     function changeName() {
       const currentName = document.getElementById('player-name-disp').innerText;
