@@ -76,8 +76,8 @@
     #icon-file-input { display: none; }
 
     #user-info-text { display: flex; flex-direction: column; }
-    #game-title { font-size: 22px; font-weight: bold; margin: 0; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
-    #user-badge { font-size: 13px; font-weight: bold; opacity: 0.9; }
+    #game-title { font-size: 22px; font-weight: bold; margin: 0; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); color: #FFFFFF; }
+    #user-badge { font-size: 13px; font-weight: bold; opacity: 0.9; color: #FFFFFF; }
     #icon-item-label { font-size: 11px; background: #FFFFFF; color: #31A07B; padding: 2px 8px; border-radius: 10px; font-weight: bold; margin-top: 4px; width: fit-content; cursor: pointer; }
 
     .right-menu-container { position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column; gap: 12px; z-index: 10; }
@@ -318,91 +318,10 @@
     </div>
 
     <div id="chat-box"></div>
+
     <div class="chat-input-container">
-      <input type="text" id="message-input" placeholder="自分の意見を入力...">
+      <input type="text" id="message-input" placeholder="意見を入力..." oninput="handleTyping()">
       <button id="send-btn" onclick="sendMessage()">送信</button>
-    </div>
-  </div>
-
-<script>
- index.html（クライアント側）と index.js（サーバー側）のフルコードと、追加した処理の詳しい解説です。
-
-1. index.html（クライアント側のフルコード）
-localStorage を使ってブラウザごとに永続的な固有ID（userId）を発行・保存し、サーバーへ同期する処理を組み込んでいます。
-
-HTML
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ゆる論争オンライン</title>
-  <script src="/socket.io/socket.io.js"></script>
-  <style>
-    body { font-family: sans-serif; margin: 20px; background: #f4f4f9; }
-    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 600px; margin: 0 auto 20px; }
-    .hidden { display: none; }
-    #chat-box { height: 250px; border: 1px solid #ccc; overflow-y: scroll; padding: 10px; margin-bottom: 10px; background: #fff; }
-    .msg { margin-bottom: 8px; }
-    .msg-author { font-weight: bold; font-size: 0.9em; color: #555; }
-    .hp-bar { height: 10px; background: #e0e0e0; border-radius: 5px; overflow: hidden; margin-top: 5px; }
-    .hp-fill { height: 100%; background: #4caf50; transition: width 0.3s; }
-    .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; }
-    .modal-content { background: white; padding: 20px; border-radius: 8px; width: 80%; max-width: 400px; }
-  </style>
-</head>
-<body>
-
-  <!-- ホーム画面 -->
-  <div id="home-screen" class="card">
-    <h1>ゆる論争オンライン</h1>
-    <p>現在のプレイヤー名: <strong id="display-name">名無し</strong></p>
-    <p>レベル: <span id="display-level">1</span> | 勝利数: <span id="display-wins">0</span></p>
-    
-    <div>
-      <input type="text" id="name-input" placeholder="新しい名前を入力">
-      <button onclick="changeName()">名前を変更</button>
-    </div>
-    <br>
-    <button onclick="startMatching()" style="font-size: 1.2em; padding: 10px 20px;">対戦をはじめる</button>
-    <button onclick="openRanking()">ランキングを見る</button>
-  </div>
-
-  <!-- マッチング待機画面 -->
-  <div id="matching-screen" class="card hidden">
-    <h2>対戦相手を探しています...</h2>
-    <p>しばらくお待ちください。</p>
-  </div>
-
-  <!-- 対戦画面 -->
-  <div id="battle-screen" class="card hidden">
-    <h2 id="theme-display">お題目: </h2>
-    <p>残り時間: <span id="timer-display">180</span> 秒</p>
-
-    <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
-      <div style="width: 48%;">
-        <div id="my-info">自分</div>
-        <div class="hp-bar"><div id="my-hp" class="hp-fill" style="width: 100%;"></div></div>
-      </div>
-      <div style="width: 48%;">
-        <div id="opponent-info">相手</div>
-        <div class="hp-bar"><div id="opponent-hp" class="hp-fill" style="width: 100%;"></div></div>
-      </div>
-    </div>
-
-    <div id="chat-box"></div>
-
-    <input type="text" id="message-input" placeholder="意見を入力..." style="width: 70%;" oninput="handleTyping()">
-    <button onclick="sendMessage()">送信</button>
-    <button onclick="surrender()" style="color: red;">降参</button>
-  </div>
-
-  <!-- ランキングモーダル -->
-  <div id="ranking-modal" class="modal hidden">
-    <div class="modal-content">
-      <h2>通算ランキング TOP 10</h2>
-      <ol id="ranking-list"></ol>
-      <button onclick="closeRanking()">閉じる</button>
     </div>
   </div>
 
@@ -423,25 +342,79 @@ HTML
 
     // サーバーから保存済みデータを受け取る
     socket.on('user_data_loaded', (userData) => {
-      document.getElementById('display-name').innerText = userData.name;
-      document.getElementById('display-level').innerText = userData.level;
-      document.getElementById('display-wins').innerText = userData.wins;
-      document.getElementById('name-input').value = userData.name;
+      document.getElementById('player-name-disp').innerText = userData.name;
+      document.getElementById('match-my-info-bar').innerText = `Lv.${userData.level} ${userData.name}`;
     });
 
-    // --- 【イベント操作】 ---
-    function changeName() {
-      const newName = document.getElementById('name-input').value.trim();
-      if (!newName) return;
-      socket.emit('update_name', { name: newName });
-      document.getElementById('display-name').innerText = newName;
+    // --- 【画面切り替え処理】 ---
+    function showScreen(screenId) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(screenId).classList.add('active');
     }
 
+    // --- 【モーダル表示・非表示】 ---
+    function openNoticeModal(title, bodyText) {
+      document.getElementById('notice-modal-header').innerText = title;
+      document.getElementById('notice-modal-body').innerText = bodyText;
+      document.getElementById('notice-modal').style.display = 'flex';
+    }
+
+    function openRuleModal() {
+      document.getElementById('rule-modal').style.display = 'flex';
+    }
+
+    function openRankingModal() {
+      socket.emit('get_ranking');
+      document.getElementById('ranking-modal').style.display = 'flex';
+    }
+
+    function closeModal(modalId) {
+      document.getElementById(modalId).style.display = 'none';
+    }
+
+    // --- 【プロフ・設定操作】 ---
+    function changeName() {
+      const currentName = document.getElementById('player-name-disp').innerText;
+      const newName = prompt("新しい名前を入力してください:", currentName);
+      if (newName && newName.trim() !== "") {
+        const trimmed = newName.trim();
+        socket.emit('update_name', { name: trimmed });
+        document.getElementById('player-name-disp').innerText = trimmed;
+      }
+    }
+
+    function triggerImageUpload() {
+      document.getElementById('icon-file-input').click();
+    }
+
+    function handleImageUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const img = document.getElementById('custom-icon-img');
+        img.src = evt.target.result;
+        img.style.display = 'block';
+        document.getElementById('fallback-text').style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function openItemBox() {
+      openNoticeModal("称号変更", "現在の称号: 初心者\n(対戦を重ねると新しい称号が解禁されます！)");
+    }
+
+    // --- 【マッチング＆対戦処理】 ---
     function startMatching() {
-      const name = document.getElementById('display-name').innerText;
+      const name = document.getElementById('player-name-disp').innerText;
       socket.emit('join_match', { name: name });
-      document.getElementById('home-screen').classList.add('hidden');
-      document.getElementById('matching-screen').classList.remove('hidden');
+      showScreen('vs-match-screen');
+      document.getElementById('match-countdown-banner').innerText = "相手を探しています...";
+      document.getElementById('match-enemy-info-bar').innerText = "WAITING...";
+    }
+
+    function goBackToMenu() {
+      location.reload(); // マッチングの単純なキャンセル処理
     }
 
     function handleTyping() {
@@ -464,81 +437,100 @@ HTML
       socket.emit('typing_status', { roomId: currentRoomId, isTyping: false });
     }
 
-    function surrender() {
+    function surrenderGame() {
       if (confirm("本当に降参しますか？") && currentRoomId) {
         socket.emit('surrender', { roomId: currentRoomId });
       }
     }
 
-    // --- 【ソケット受信用イベント】 ---
+    // --- 【Socket.io 受信イベント】 ---
     socket.on('match_found', (data) => {
       currentRoomId = data.roomId;
-      document.getElementById('matching-screen').classList.add('hidden');
-      document.getElementById('battle-screen').classList.remove('hidden');
-      document.getElementById('theme-display').innerText = `お題目: ${data.theme} (${data.yourSide})`;
-      document.getElementById('my-info').innerText = `自分 (${data.yourSide})`;
-      document.getElementById('opponent-info').innerText = `相手: ${data.opponentName} (Lv.${data.opponentLevel})`;
-      document.getElementById('chat-box').innerHTML = '';
+      document.getElementById('match-countdown-banner').innerText = "MATCH FOUND!";
+      document.getElementById('match-enemy-info-bar').innerText = `Lv.${data.opponentLevel} ${data.opponentName}`;
+
+      setTimeout(() => {
+        showScreen('debate-screen');
+        document.getElementById('current-theme').innerText = `お題: ${data.theme} (${data.yourSide})`;
+        document.getElementById('chat-box').innerHTML = '';
+      }, 1500);
     });
 
     socket.on('receive_message', (data) => {
       const chatBox = document.getElementById('chat-box');
-      const div = document.createElement('div');
-      div.className = 'msg';
-      div.innerHTML = `<span class="msg-author">${data.senderName} (${data.senderSide}):</span> ${data.message}`;
-      chatBox.appendChild(div);
+      const isMe = data.senderId === socket.id;
+
+      const row = document.createElement('div');
+      row.className = `message-row ${isMe ? 'my-message' : 'other-message'}`;
+
+      const nameDiv = document.createElement('div');
+      nameDiv.className = 'sender-name';
+      nameDiv.innerText = `${data.senderName} (${data.senderSide})`;
+
+      const bubbleDiv = document.createElement('div');
+      bubbleDiv.className = 'bubble';
+      bubbleDiv.innerText = data.message;
+
+      row.appendChild(nameDiv);
+      row.appendChild(bubbleDiv);
+      chatBox.appendChild(row);
+
       chatBox.scrollTop = chatBox.scrollHeight;
     });
 
     socket.on('tick_status', (data) => {
-      document.getElementById('timer-display').innerText = data.timeLeft;
+      document.getElementById('time-left-num').innerText = data.timeLeft;
       const myId = socket.id;
       const players = data.players;
-      
+
       if (players[myId]) {
-        const myHpPercent = (players[myId].hp / 10000) * 100;
-        document.getElementById('my-hp').style.width = `${myHpPercent}%`;
+        const myHp = players[myId].hp;
+        document.getElementById('my-hp-label').innerText = `あなた: ${myHp}`;
+        document.getElementById('my-hp-bar').style.width = `${(myHp / 10000) * 100}%`;
       }
-      
+
       const oppId = Object.keys(players).find(id => id !== myId);
       if (oppId && players[oppId]) {
-        const oppHpPercent = (players[oppId].hp / 10000) * 100;
-        document.getElementById('opponent-hp').style.width = `${oppHpPercent}%`;
+        const enemyHp = players[oppId].hp;
+        document.getElementById('enemy-hp-label').innerText = `相手: ${enemyHp}`;
+        document.getElementById('enemy-hp-bar').style.width = `${(enemyHp / 10000) * 100}%`;
       }
     });
 
     socket.on('game_over', (data) => {
-      alert(`対戦終了！\n勝者: ${data.winnerName}\n理由: ${data.reason}`);
+      openNoticeModal("対戦終了", `勝者: ${data.winnerName}\n理由: ${data.reason}`);
       currentRoomId = null;
-      document.getElementById('battle-screen').classList.add('hidden');
-      document.getElementById('home-screen').classList.remove('hidden');
-      // データの最新化をリクエスト
+      showScreen('menu-screen');
       socket.emit('auth_user', { userId: myUserId });
     });
 
     socket.on('kicked_notification', (data) => {
-      alert(`警告: ${data.reason}`);
+      openNoticeModal("警告", data.reason);
     });
-
-    // --- 【ランキング表示処理】 ---
-    function openRanking() {
-      socket.emit('get_ranking');
-      document.getElementById('ranking-modal').classList.remove('hidden');
-    }
-
-    function closeRanking() {
-      document.getElementById('ranking-modal').classList.add('hidden');
-    }
 
     socket.on('ranking_data', (list) => {
-      const rankingList = document.getElementById('ranking-list');
-      rankingList.innerHTML = '';
-      list.forEach(item => {
-        const li = document.createElement('li');
-        li.innerText = `${item.name} - ${item.wins}勝 (Lv.${item.level})`;
-        rankingList.appendChild(li);
+      const body = document.getElementById('ranking-modal-body');
+      if (list.length === 0) {
+        body.innerHTML = "<p style='text-align:center;'>ランキングデータがありません</p>";
+        return;
+      }
+
+      let html = `<table class="ranking-table">
+        <thead><tr><th>順位</th><th>名前</th><th>レベル</th><th>勝利数</th></tr></thead>
+        <tbody>`;
+
+      list.forEach((item, index) => {
+        html += `<tr>
+          <td><strong>${index + 1}</strong></td>
+          <td>${item.name}</td>
+          <td>Lv.${item.level}</td>
+          <td>${item.wins}勝</td>
+        </tr>`;
       });
+
+      html += `</tbody></table>`;
+      body.innerHTML = html;
     });
-</script>
+  </script>
 </body>
 </html>
