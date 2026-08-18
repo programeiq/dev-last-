@@ -196,7 +196,7 @@
   <!-- メニュー画面 -->
   <div id="menu-screen" class="screen active">
     <div id="user-profile-area">
-      <div id="user-icon-slot" onclick="triggerImageUpload()" title="クリックして写真をアップロード！">
+      <div id="user-icon-slot" onclick="playButtonSound(); triggerImageUpload()" title="クリックして写真をアップロード！">
         <img id="custom-icon-img" style="display:none;" alt="ユーザーアイコン">
         <span id="fallback-text">写真<br>UP</span>
       </div>
@@ -205,14 +205,14 @@
       <div id="user-info-text">
         <h1 id="game-title">ゆるろん</h1>
         <div id="user-badge">プレイヤー: <span id="player-name-disp">名無し</span></div>
-        <div id="icon-item-label" onclick="openItemBox()" title="称号アイテムを変更する">初心者</div>
+        <div id="icon-item-label" onclick="playButtonSound(); openItemBox()" title="称号アイテムを変更する">初心者</div>
       </div>
     </div>
 
     <div class="right-menu-container">
-      <button class="side-btn btn-settings" onclick="changeName()" title="名前を変更する">SET</button>
-      <button class="side-btn btn-ranking" onclick="openRankingModal()">RANK</button>
-      <button class="side-btn btn-rule" onclick="openRuleModal()">RULE</button>
+      <button class="side-btn btn-settings" onclick="playButtonSound(); changeName()" title="名前を変更する">SET</button>
+      <button class="side-btn btn-ranking" onclick="playButtonSound(); openRankingModal()">RANK</button>
+      <button class="side-btn btn-rule" onclick="playButtonSound(); openRuleModal()">RULE</button>
     </div>
 
     <div id="vs-logo-container">
@@ -222,7 +222,7 @@
     <div id="display-box">STATUS : READY</div>
 
     <div class="bottom-btn-container">
-      <button class="btn-play" onclick="startMatching()">PLAY</button>
+      <button class="btn-play" onclick="playButtonSound(); startMatching()">PLAY</button>
     </div>
   </div>
 
@@ -231,7 +231,7 @@
     <div class="modal-content">
       <div id="notice-modal-header" class="modal-header">お知らせ</div>
       <div id="notice-modal-body" class="modal-body">---</div>
-      <button class="modal-close-btn" onclick="closeModal('notice-modal')">閉じる</button>
+      <button class="modal-close-btn" onclick="playButtonSound(); closeModal('notice-modal')">閉じる</button>
     </div>
   </div>
 
@@ -240,7 +240,7 @@
     <div class="modal-content">
       <div class="modal-header">勝利数ランキング</div>
       <div id="ranking-modal-body" class="modal-body">データ読み込み中...</div>
-      <button class="modal-close-btn" onclick="closeModal('ranking-modal')">閉じる</button>
+      <button class="modal-close-btn" onclick="playButtonSound(); closeModal('ranking-modal')">閉じる</button>
     </div>
   </div>
 
@@ -259,7 +259,7 @@
 【禁止事項】
 ・暴言や不適切なNGワードを送信すると「即時キック（部屋強制退室）」となります。
       </div>
-      <button class="modal-close-btn" onclick="closeModal('rule-modal')">閉じる</button>
+      <button class="modal-close-btn" onclick="playButtonSound(); closeModal('rule-modal')">閉じる</button>
     </div>
   </div>
 
@@ -284,14 +284,14 @@
         <div class="match-info-bar" id="match-enemy-info-bar">相手を待っています</div>
       </div>
     </div>
-    <button class="btn-back" style="margin-top: 20px;" onclick="goBackToMenu()">キャンセルして戻る</button>
+    <button class="btn-back" style="margin-top: 20px;" onclick="playButtonSound(); goBackToMenu()">キャンセルして戻る</button>
   </div>
 
   <!-- バトル画面 -->
   <div id="debate-screen" class="screen">
     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 10px;">
       <div id="room-title" style="font-size: 14px; font-weight: bold; color: #FFFFFF;">ONLINE BATTLE</div>
-      <button class="btn-back" onclick="surrenderGame()">降参</button>
+      <button class="btn-back" onclick="playButtonSound(); surrenderGame()">降参</button>
     </div>
 
     <div id="theme-info">
@@ -321,38 +321,79 @@
 
     <div class="chat-input-container">
       <input type="text" id="message-input" placeholder="意見を入力..." oninput="handleTyping()">
-      <button id="send-btn" onclick="sendMessage()">送信</button>
+      <button id="send-btn" onclick="playButtonSound(); sendMessage()">送信</button>
     </div>
   </div>
 
   <script>
+    // --- 【効果音（Web Audio API）処理】 ---
+    let audioCtx = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function playButtonSound() {
+      try {
+        initAudio();
+        if (!audioCtx) return;
+
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        // ポップなピコッ音の設定
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.1);
+
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+      } catch (e) {
+        console.error("効果音の再生に失敗しました:", e);
+      }
+    }
+
+    // 初回ユーザー操作時にオーディオ解禁
+    window.addEventListener('click', initAudio, { once: true });
+    window.addEventListener('touchstart', initAudio, { once: true });
+
+    // --- 【Socket.io ＆ ゲーム通信処理】 ---
     const socket = io();
     let currentRoomId = null;
     let typingTimeout = null;
 
-    // --- 【端末固有IDの発行と永続化処理】 ---
+    // 端末固有IDの発行と解禁
     let myUserId = localStorage.getItem('yururon_user_id');
     if (!myUserId) {
       myUserId = 'user_' + Math.random().toString(36).substring(2, 9);
       localStorage.setItem('yururon_user_id', myUserId);
     }
 
-    // 接続時にサーバーへ認証IDを送信
     socket.emit('auth_user', { userId: myUserId });
 
-    // サーバーから保存済みデータを受け取る
     socket.on('user_data_loaded', (userData) => {
       document.getElementById('player-name-disp').innerText = userData.name;
       document.getElementById('match-my-info-bar').innerText = `Lv.${userData.level} ${userData.name}`;
     });
 
-    // --- 【画面切り替え処理】 ---
+    // 画面切り替え
     function showScreen(screenId) {
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.getElementById(screenId).classList.add('active');
     }
 
-    // --- 【モーダル表示・非表示】 ---
+    // モーダル操作
     function openNoticeModal(title, bodyText) {
       document.getElementById('notice-modal-header').innerText = title;
       document.getElementById('notice-modal-body').innerText = bodyText;
@@ -372,32 +413,7 @@
       document.getElementById(modalId).style.display = 'none';
     }
 
-    // Web Audio APIの初期化
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-function playButtonSound() {
-  // ブラウザの自動再生制限対策（ユーザー操作でコンテキストを有効化）
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
-
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-
-  osc.type = 'sine'; // 音色（sine, square, triangle, sawtooth）
-  osc.frequency.setValueAtTime(800, audioCtx.currentTime); // 周波数（音の高さ）
-  osc.frequency.exponentialRampToValueAtTime(400, audioCtx.currentTime + 0.08); // 音の高さを減衰
-
-  gain.gain.setValueAtTime(0.1, audioCtx.currentTime); // 音量
-  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08); // 音量を減衰
-
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-
-  osc.start();
-  osc.stop(audioCtx.currentTime + 0.08); // 0.08秒で停止
-}
-    // --- 【プロフ・設定操作】 ---
+    // ユーザー変更操作
     function changeName() {
       const currentName = document.getElementById('player-name-disp').innerText;
       const newName = prompt("新しい名前を入力してください:", currentName);
@@ -429,7 +445,7 @@ function playButtonSound() {
       openNoticeModal("称号変更", "現在の称号: 初心者\n(対戦を重ねると新しい称号が解禁されます！)");
     }
 
-    // --- 【マッチング＆対戦処理】 ---
+    // 対戦ロジック
     function startMatching() {
       const name = document.getElementById('player-name-disp').innerText;
       socket.emit('join_match', { name: name });
@@ -439,7 +455,7 @@ function playButtonSound() {
     }
 
     function goBackToMenu() {
-      location.reload(); // マッチングの単純なキャンセル処理
+      location.reload();
     }
 
     function handleTyping() {
@@ -468,7 +484,7 @@ function playButtonSound() {
       }
     }
 
-    // --- 【Socket.io 受信イベント】 ---
+    // Socket受信イベント
     socket.on('match_found', (data) => {
       currentRoomId = data.roomId;
       document.getElementById('match-countdown-banner').innerText = "MATCH FOUND!";
