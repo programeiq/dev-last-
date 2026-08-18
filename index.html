@@ -421,19 +421,45 @@
       document.getElementById('icon-file-input').click();
     }
 
-    function handleImageUpload(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(evt) {
-        const img = document.getElementById('custom-icon-img');
-        img.src = evt.target.result;
-        img.style.display = 'block';
-        document.getElementById('fallback-text').style.display = 'none';
-      };
-      reader.readAsDataURL(file);
-    }
+function handleImageUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
 
+  // 画像サイズの制限（大きすぎる画像による通信エラー防止: 1MB以下推奨）
+  if (file.size > 1024 * 1024) {
+    openNoticeModal("エラー", "画像サイズが大きすぎます（1MB以下にしてください）");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    const base64Image = evt.target.result;
+
+    // 画面上の表示を更新
+    const img = document.getElementById('custom-icon-img');
+    img.src = base64Image;
+    img.style.display = 'block';
+    document.getElementById('fallback-text').style.display = 'none';
+
+    // 【重要】サーバーにアイコン更新を送信して保存する
+    socket.emit('update_icon', { iconData: base64Image });
+  };
+  reader.readAsDataURL(file);
+}
+
+// ユーザーデータ読み込み時にもアイコンをセットするよう更新
+socket.on('user_data_loaded', (userData) => {
+  document.getElementById('player-name-disp').innerText = userData.name;
+  document.getElementById('match-my-info-bar').innerText = `Lv.${userData.level} ${userData.name}`;
+
+  // 保存されたアイコンがあれば復元表示する
+  if (userData.icon) {
+    const img = document.getElementById('custom-icon-img');
+    img.src = userData.icon;
+    img.style.display = 'block';
+    document.getElementById('fallback-text').style.display = 'none';
+  }
+});
 
     function startMatching() {
       const name = document.getElementById('player-name-disp').innerText;
