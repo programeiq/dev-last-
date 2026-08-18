@@ -329,20 +329,47 @@
 
   let myId = null;
   let currentRoomId = null;
-  let userName = "名無し";
+  // 1. localStorage から保存された名前を読込（無ければ "名無し"）
+  let userName = localStorage.getItem('yururon_user_name') || "名無し";
   let isTyping = false;
   let typingTimeout = null;
+
+  // 画面読み込み時に保存データを反映
+  window.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('player-name-disp').innerText = userName;
+    document.getElementById('match-my-info-bar').innerText = `Lv.1 ${userName}`;
+
+    // 保存されているアイコン画像（Base64）を読み込んでセット
+    const savedIcon = localStorage.getItem('yururon_user_icon');
+    if (savedIcon) {
+      applyIconToUI(savedIcon);
+    }
+  });
+
+  // アイコン描画共通関数
+  function applyIconToUI(dataUrl) {
+    const img = document.getElementById('custom-icon-img');
+    img.src = dataUrl;
+    img.style.display = 'block';
+    document.getElementById('fallback-text').style.display = 'none';
+
+    document.getElementById('match-my-icon-slot').innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;">`;
+  }
 
   function showScreen(screenId) {
     document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
     document.getElementById(screenId).classList.add('active');
   }
 
-  // 名前変更処理（サーバーへの即時同期を含む）
+  // 名前変更処理（localStorage保存追加）
   function changeName() {
     const input = prompt("新しいプレイヤー名を入力してください（10文字以内）:", userName);
     if (input && input.trim() !== "") {
       userName = input.trim().substring(0, 10);
+      
+      // localStorage に保存
+      localStorage.setItem('yururon_user_name', userName);
+
       document.getElementById('player-name-disp').innerText = userName;
       document.getElementById('match-my-info-bar').innerText = `Lv.1 ${userName}`;
 
@@ -355,20 +382,31 @@
     document.getElementById('icon-file-input').click();
   }
 
+  // 画像アップロード処理（3MB制限 & localStorage保存追加）
   function handleImageUpload(e) {
     const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = function(evt) {
-        const img = document.getElementById('custom-icon-img');
-        img.src = evt.target.result;
-        img.style.display = 'block';
-        document.getElementById('fallback-text').style.display = 'none';
+    if (!file) return;
 
-        document.getElementById('match-my-icon-slot').innerHTML = `<img src="${evt.target.result}" style="width:100%;height:100%;object-fit:cover;">`;
-      };
-      reader.readAsDataURL(file);
+    // 3MB (3 * 1024 * 1024 バイト) チェック
+    const maxSizeBytes = 3 * 1024 * 1024;
+    if (file.size > maxSizeBytes) {
+      alert("ファイルサイズが大きすぎます。3MB以下の画像を選択してください。");
+      e.target.value = ''; // 選択状態をリセット
+      return;
     }
+
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      const dataUrl = evt.target.result;
+      
+      try {
+        localStorage.setItem('yururon_user_icon', dataUrl);
+        applyIconToUI(dataUrl);
+      } catch (error) {
+        alert("ブラウザのストレージ容量が不足しているため保存できませんでした。");
+      }
+    };
+    reader.readAsDataURL(file);
   }
 
   function openItemBox() {
