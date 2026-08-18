@@ -204,7 +204,7 @@ io.on('connection', (socket) => {
     endGame(data.roomId, winnerName, "SURRENDER");
   });
 
-  // 4. ランキングデータ取得（勝利数順に10件返す）
+  // 4. ランキングデータ取得
   socket.on('get_ranking', () => {
     const rankingList = Object.keys(dbUsers)
       .map(id => ({
@@ -253,7 +253,6 @@ function startRoomTimer(roomId) {
 
     Object.keys(room.players).forEach(pId => {
       const p = room.players[pId];
-      // 入力中でない場合のみ毎秒 1 HP 減少
       if (!p.isTyping) {
         p.hp = Math.max(0, p.hp - 1);
       }
@@ -302,7 +301,6 @@ function startRoomTimer(roomId) {
   }, 1000);
 }
 
-// 勝利数とレベルを記録してファイルに保存
 function recordWin(socketId) {
   const userId = socketToUserId[socketId];
   if (userId && dbUsers[userId]) {
