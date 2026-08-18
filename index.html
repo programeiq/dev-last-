@@ -205,7 +205,7 @@
       <div id="user-info-text">
         <h1 id="game-title">ゆるろん</h1>
         <div id="user-badge">プレイヤー: <span id="player-name-disp">名無し</span></div>
-        <div id="icon-item-label" style="display:none;"></div>
+        <div id="icon-item-label" onclick="openItemBox()" title="称号アイテムを変更する">初心者</div>
       </div>
     </div>
 
@@ -325,54 +325,28 @@
   </div>
 
 <script>
-  const STORAGE_KEY_ID = 'yururon_user_id';
-  const STORAGE_KEY_NAME = 'yururon_user_name';
-
-  function getOrCreateUserId() {
-    let savedId = localStorage.getItem(STORAGE_KEY_ID);
-    if (!savedId) {
-      savedId = 'user_' + Math.random().toString(36).substring(2, 11) + Date.now().toString(36);
-      localStorage.setItem(STORAGE_KEY_ID, savedId);
-    }
-    return savedId;
-  }
-
-  const userId = getOrCreateUserId();
-  // 保存された名前があればそれを読み込み、なければ「名無し」
-  let userName = localStorage.getItem(STORAGE_KEY_NAME) || "名無し";
-  document.getElementById('player-name-disp').innerText = userName;
-
   const socket = io();
+
+  let myId = null;
   let currentRoomId = null;
-  let isTypingTimer = null;
-
-  // サーバー接続時に userId と保存されている userName も送信する
-  socket.on('connect', () => {
-    socket.emit('auth_user', { userId: userId, name: userName });
-  });
-
-  socket.on('user_data_loaded', (userData) => {
-    if (userData.name) {
-      userName = userData.name;
-      document.getElementById('player-name-disp').innerText = userName;
-      localStorage.setItem(STORAGE_KEY_NAME, userName);
-    }
-    document.getElementById('display-box').innerText = `STATUS : READY (Lv.${userData.level || 1} / ${userData.wins || 0}勝)`;
-  });
+  let userName = "名無し";
+  let isTyping = false;
+  let typingTimeout = null;
 
   function showScreen(screenId) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
     document.getElementById(screenId).classList.add('active');
   }
 
+  // 名前変更処理（サーバーへの即時同期を含む）
   function changeName() {
     const input = prompt("新しいプレイヤー名を入力してください（10文字以内）:", userName);
     if (input && input.trim() !== "") {
       userName = input.trim().substring(0, 10);
       document.getElementById('player-name-disp').innerText = userName;
-      // ブラウザ（localStorage）に保存
-      localStorage.setItem(STORAGE_KEY_NAME, userName);
-      // サーバーにも変更を送信
+      document.getElementById('match-my-info-bar').innerText = `Lv.1 ${userName}`;
+
+      // サーバー側に名前更新を送信
       socket.emit('update_name', { name: userName });
     }
   }
@@ -390,43 +364,31 @@
         img.src = evt.target.result;
         img.style.display = 'block';
         document.getElementById('fallback-text').style.display = 'none';
+
+        document.getElementById('match-my-icon-slot').innerHTML = `<img src="${evt.target.result}" style="width:100%;height:100%;object-fit:cover;">`;
       };
       reader.readAsDataURL(file);
     }
   }
 
-  function startMatching() {
-    showScreen('vs-match-screen');
-    document.getElementById('match-countdown-banner').innerText = "相手を探しています...";
-    document.getElementById('match-my-info-bar').innerText = `あなた (${userName})`;
-    document.getElementById('match-enemy-info-bar').innerText = "相手を待っています";
-    socket.emit('join_match', { name: userName });
+  function openItemBox() {
+    alert("称号機能は今後のアップデートで追加されます！");
   }
 
-  function goBackToMenu() {
-    socket.emit('cancel_match');
-    showScreen('menu-screen');
-  }
-
-  function openRuleModal() {
-    document.getElementById('rule-modal').style.display = 'flex';
-  }
-
+  // 勝利数ランキング取得処理
   function openRankingModal() {
     const body = document.getElementById('ranking-modal-body');
-    body.innerText = "データ読み込み中...";
+    body.innerText = "最新データを読み込み中...";
     document.getElementById('ranking-modal').style.display = 'flex';
-    socket.emit('get_ranking');
-  }
 
-  function closeModal(modalId) {
-    document.getElementById(modalId).style.display = 'none';
+    socket.emit('get_ranking');
   }
 
   socket.on('ranking_data', (rankingList) => {
     const body = document.getElementById('ranking-modal-body');
+
     if (!rankingList || rankingList.length === 0) {
-      body.innerHTML = "<p style='text-align:center;'>まだ記録がありません。</p>";
+      body.innerHTML = "<p style='text-align:center;'>まだ勝利記録がありません。<br>勝利して1位を目指そう！</p>";
       return;
     }
 
@@ -443,11 +405,17 @@
     `;
 
     rankingList.forEach((item, index) => {
+      const rank = index + 1;
+      let medal = rank;
+      if (rank === 1) medal = "🥇 1位";
+      else if (rank === 2) medal = "🥈 2位";
+      else if (rank === 3) medal = "🥉 3位";
+
       html += `
         <tr>
-          <td>#${index + 1}</td>
-          <td>${escapeHtml(item.name)} (Lv.${item.level})</td>
-          <td>${item.wins} 勝</td>
+          <td><b>${medal}</b></td>
+          <td>${item.name}</td>
+          <td><b>${item.wins} 勝</b></td>
         </tr>
       `;
     });
@@ -456,93 +424,135 @@
     body.innerHTML = html;
   });
 
+  function showNoticeModal(title, text) {
+    document.getElementById('notice-modal-header').innerText = title;
+    document.getElementById('notice-modal-body').innerText = text;
+    document.getElementById('notice-modal').style.display = 'flex';
+  }
+
+  function openRuleModal() {
+    document.getElementById('rule-modal').style.display = 'flex';
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).style.display = 'none';
+  }
+
+  function startMatching() {
+    socket.emit('join_match', { name: userName, level: 1 });
+    
+    showScreen('vs-match-screen');
+    document.getElementById('match-countdown-banner').innerText = "相手を探しています...";
+    document.getElementById('match-enemy-info-bar').innerText = "WAITING...";
+  }
+
+  function goBackToMenu() {
+    showScreen('menu-screen');
+    window.location.reload();
+  }
+
   socket.on('match_found', (data) => {
+    myId = socket.id;
     currentRoomId = data.roomId;
-    document.getElementById('match-countdown-banner').innerText = "対戦相手決定！";
-    document.getElementById('current-theme').innerText = `お題: ${data.theme}`;
-    document.getElementById('chat-box').innerHTML = '';
+
+    document.getElementById('match-countdown-banner').innerText = "MATCH FOUND!";
+    document.getElementById('match-enemy-info-bar').innerText = `${data.opponentName} (Lv.${data.opponentLevel})`;
 
     setTimeout(() => {
       showScreen('debate-screen');
+      document.getElementById('chat-box').innerHTML = '';
+
+      document.getElementById('current-theme').innerText = `お題: ${data.theme}\n【あなたの立場: ${data.yourSide}】`;
+      document.getElementById('my-hp-label').innerText = `あなた (${data.yourSide}): 10000`;
+      document.getElementById('enemy-hp-label').innerText = `相手 (${data.opponentSide}): 10000`;
     }, 1200);
   });
 
-  socket.on('tick_status', (data) => {
-    document.getElementById('time-left-num').innerText = data.timeLeft;
-
-    const pIds = Object.keys(data.players);
-    if (pIds.length === 2) {
-      const myData = data.players[socket.id];
-      const oppId = pIds.find(id => id !== socket.id);
-      const oppData = data.players[oppId];
-
-      if (myData && oppData) {
-        document.getElementById('my-hp-label').innerText = `${myData.name}: ${myData.hp}`;
-        document.getElementById('my-hp-bar').style.width = `${(myData.hp / 10000) * 100}%`;
-
-        document.getElementById('enemy-hp-label').innerText = `${oppData.name}: ${oppData.hp}`;
-        document.getElementById('enemy-hp-bar').style.width = `${(oppData.hp / 10000) * 100}%`;
-      }
-    }
-  });
-
   const msgInput = document.getElementById('message-input');
-
-  function sendMessage() {
-    const msg = msgInput.value.trim();
-    if (!msg || !currentRoomId) return;
-    socket.emit('send_message', { roomId: currentRoomId, message: msg });
-    msgInput.value = '';
-    sendTypingStatus(false);
-  }
+  msgInput.addEventListener('input', () => {
+    if (!isTyping) {
+      isTyping = true;
+      socket.emit('typing_status', { roomId: currentRoomId, isTyping: true });
+    }
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+      isTyping = false;
+      socket.emit('typing_status', { roomId: currentRoomId, isTyping: false });
+    }, 2000);
+  });
 
   msgInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') sendMessage();
   });
 
-  msgInput.addEventListener('input', () => {
-    sendTypingStatus(true);
-    clearTimeout(isTypingTimer);
-    isTypingTimer = setTimeout(() => sendTypingStatus(false), 1500);
-  });
+  function sendMessage() {
+    const text = msgInput.value.trim();
+    if (!text || !currentRoomId) return;
 
-  function sendTypingStatus(isTyping) {
-    if (currentRoomId) socket.emit('typing_status', { roomId: currentRoomId, isTyping });
+    socket.emit('send_message', { roomId: currentRoomId, message: text });
+    msgInput.value = '';
+    isTyping = false;
   }
 
   socket.on('receive_message', (data) => {
     const chatBox = document.getElementById('chat-box');
-    const isSelf = data.senderId === socket.id;
+    const isMe = data.senderId === myId;
 
     const row = document.createElement('div');
-    row.className = `message-row ${isSelf ? 'my-message' : 'other-message'}`;
+    row.className = `message-row ${isMe ? 'my-message' : 'other-message'}`;
 
     row.innerHTML = `
-      <div class="sender-name">${escapeHtml(data.senderName)}</div>
-      <div class="bubble">${escapeHtml(data.message)}</div>
+      <div class="sender-name">${data.senderName} (${data.senderSide})</div>
+      <div class="bubble">${data.message}</div>
     `;
 
     chatBox.appendChild(row);
     chatBox.scrollTop = chatBox.scrollHeight;
+
+    updatePlayersUI(data.players);
   });
 
+  socket.on('tick_status', (data) => {
+    document.getElementById('time-left-num').innerText = data.timeLeft;
+    updatePlayersUI(data.players);
+  });
+
+  function updatePlayersUI(players) {
+    if (!players) return;
+    Object.keys(players).forEach(pId => {
+      const p = players[pId];
+      const hpPct = Math.max(0, (p.hp / 10000) * 100);
+
+      if (pId === myId) {
+        document.getElementById('my-hp-label').innerText = `あなた: ${p.hp}`;
+        document.getElementById('my-hp-bar').style.width = `${hpPct}%`;
+      } else {
+        document.getElementById('enemy-hp-label').innerText = `相手: ${p.hp}`;
+        document.getElementById('enemy-hp-bar').style.width = `${hpPct}%`;
+      }
+    });
+  }
+
   function surrenderGame() {
-    if (currentRoomId && confirm("本当に降参しますか？")) {
+    if (confirm("本当に降参しますか？")) {
       socket.emit('surrender', { roomId: currentRoomId });
     }
   }
 
+  socket.on('kicked_notification', (data) => {
+    showScreen('menu-screen');
+    showNoticeModal("⚠️ キック（強制退室）", data.reason);
+  });
+
   socket.on('game_over', (data) => {
     showScreen('menu-screen');
+
     let title = "試合終了";
     let message = "";
 
     if (data.reason === "OPPONENT_KICKED") {
       title = "🎉 不戦勝！";
       message = "相手プレイヤーが暴言（NGワード）によりキックされたため、あなたの勝利です！";
-    } else if (data.reason === "DISCONNECTED") {
-      title = "🎉 不戦勝！";
-      message = "相手プレイヤーが通信切断（タブを閉じた等）したため、あなたの勝利です！";
     } else if (data.reason === "SURRENDER") {
       title = "試合決着";
       message = `勝者: ${data.winnerName}\n（降参により決着）`;
@@ -552,23 +562,7 @@
     }
 
     showNoticeModal(title, message);
-    socket.emit('auth_user', { userId: userId, name: userName });
   });
-
-  socket.on('kicked_notification', (data) => {
-    showScreen('menu-screen');
-    showNoticeModal("ペナルティ通知", data.reason);
-  });
-
-  function showNoticeModal(title, text) {
-    document.getElementById('notice-modal-header').innerText = title;
-    document.getElementById('notice-modal-body').innerText = text;
-    document.getElementById('notice-modal').style.display = 'flex';
-  }
-
-  function escapeHtml(str) {
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-  }
 </script>
 </body>
 </html>
