@@ -365,7 +365,7 @@
     window.addEventListener('click', initAudio, { once: true });
     window.addEventListener('touchstart', initAudio, { once: true });
 
-    // Socket.io 通信制御
+       // Socket.io 通信制御
     const socket = io();
     let currentRoomId = null;
     let typingTimeout = null;
@@ -377,15 +377,30 @@
     }
 
     socket.emit('auth_user', { userId: myUserId });
+    // --- ローカルストレージ（ブラウザ保存）処理 ---
+    window.addEventListener('DOMContentLoaded', () => {
+      // 1. 保存された名前の復元
+      const savedName = localStorage.getItem('yururon_user_name');
+      if (savedName) {
+        document.getElementById('player-name-disp').innerText = savedName;
+      }
 
     socket.on('user_data_loaded', (userData) => {
       document.getElementById('player-name-disp').innerText = userData.name;
       document.getElementById('match-my-info-bar').innerText = `Lv.${userData.level} ${userData.name}`;
+      // 2. 保存されたアイコン画像の復元
+      const savedIcon = localStorage.getItem('yururon_user_icon');
+      if (savedIcon) {
+        showIconImage(savedIcon);
+      }
     });
 
     function showScreen(screenId) {
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.getElementById(screenId).classList.add('active');
+    // 画像選択時の処理
+    function triggerImageUpload() {
+      document.getElementById('icon-file-input').click();
     }
 
     function openNoticeModal(title, bodyText) {
@@ -393,74 +408,34 @@
       document.getElementById('notice-modal-body').innerText = bodyText;
       document.getElementById('notice-modal').style.display = 'flex';
     }
+    function handleImageUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
 
     function openRuleModal() {
       document.getElementById('rule-modal').style.display = 'flex';
     }
+      // localStorageの容量制限（約5MB）対策のため1MB以下に制限
+      if (file.size > 1024 * 1024) {
+        openNoticeModal("エラー", "画像サイズが大きすぎます（1MB以下の画像を選んでください）");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const base64Image = evt.target.result;
 
     function openRankingModal() {
       socket.emit('get_ranking');
       document.getElementById('ranking-modal').style.display = 'flex';
+        // 1. 画面表示の更新
+        showIconImage(base64Image);
+
+        // 2. localStorage に保存（これが肝！）
+        localStorage.setItem('yururon_user_icon', base64Image);
+      };
+      reader.readAsDataURL(file);
     }
-
-    function closeModal(modalId) {
-      document.getElementById(modalId).style.display = 'none';
-    }
-
-    function changeName() {
-      const currentName = document.getElementById('player-name-disp').innerText;
-      const newName = prompt("新しい名前を入力してください:", currentName);
-      if (newName && newName.trim() !== "") {
-        const trimmed = newName.trim();
-        socket.emit('update_name', { name: trimmed });
-        document.getElementById('player-name-disp').innerText = trimmed;
-      }
-    }
-
-    function triggerImageUpload() {
-      document.getElementById('icon-file-input').click();
-    }
-
-function handleImageUpload(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  // 画像サイズの制限（大きすぎる画像による通信エラー防止: 1MB以下推奨）
-  if (file.size > 1024 * 1024) {
-    openNoticeModal("エラー", "画像サイズが大きすぎます（1MB以下にしてください）");
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.onload = function(evt) {
-    const base64Image = evt.target.result;
-
-    // 画面上の表示を更新
-    const img = document.getElementById('custom-icon-img');
-    img.src = base64Image;
-    img.style.display = 'block';
-    document.getElementById('fallback-text').style.display = 'none';
-
-    // 【重要】サーバーにアイコン更新を送信して保存する
-    socket.emit('update_icon', { iconData: base64Image });
-  };
-  reader.readAsDataURL(file);
-}
-
-// ユーザーデータ読み込み時にもアイコンをセットするよう更新
-socket.on('user_data_loaded', (userData) => {
-  document.getElementById('player-name-disp').innerText = userData.name;
-  document.getElementById('match-my-info-bar').innerText = `Lv.${userData.level} ${userData.name}`;
-
-  // 保存されたアイコンがあれば復元表示する
-  if (userData.icon) {
-    const img = document.getElementById('custom-icon-img');
-    img.src = userData.icon;
-    img.style.display = 'block';
-    document.getElementById('fallback-text').style.display = 'none';
-  }
-});
-
     function startMatching() {
       const name = document.getElementById('player-name-disp').innerText;
       socket.emit('join_match', { name: name });
