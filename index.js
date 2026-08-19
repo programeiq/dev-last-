@@ -456,7 +456,7 @@ function processMatching() {
       roomId: roomId,
       opponentName: player2.name,
       opponentLevel: level2,
-      yourSide: '立場A',
+      yourSide: '前者',
       theme: selectedTheme
     });
 
@@ -464,7 +464,7 @@ function processMatching() {
       roomId: roomId,
       opponentName: player1.name,
       opponentLevel: level1,
-      yourSide: '立場B',
+      yourSide: '後者',
       theme: selectedTheme
     });
 
