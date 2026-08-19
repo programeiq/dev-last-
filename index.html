@@ -151,7 +151,7 @@
 
     <div class="right-menu-container">
       <button class="side-btn btn-settings" onclick="playButtonSound(); changeName()" title="名前を変更する">SET</button>
-      <button class="side-btn btn-ranking" onclick="playButtonSound(); openNoticeModal('ランキング', 'オフラインモードです')">RANK</button>
+      <button class="side-btn btn-ranking" onclick="playButtonSound(); openRankingModal()">RANK</button>
       <button class="side-btn btn-rule" onclick="playButtonSound(); openRuleModal()">RULE</button>
     </div>
 
@@ -162,7 +162,7 @@
     <div id="display-box">STATUS : READY</div>
 
     <div class="bottom-btn-container">
-      <button class="btn-play" onclick="playButtonSound(); openNoticeModal('スタート', 'フロントエンド単体動作モードです')">PLAY</button>
+      <button class="btn-play" onclick="playButtonSound(); playButtonClick()">PLAY</button>
     </div>
   </div>
 
@@ -215,17 +215,28 @@
     window.addEventListener('click', initAudio, { once: true });
 
     // --- ローカルストレージ（ブラウザ保存）処理 ---
+    const defaultRanking = [
+      { name: "マスターろん", score: 8500 },
+      { name: "論破王たなか", score: 6200 },
+      { name: "ひろゆき風Bot", score: 4500 }
+    ];
+
     window.addEventListener('DOMContentLoaded', () => {
-      // 1. 保存された名前の復元
+      // 名前復元
       const savedName = localStorage.getItem('yururon_user_name');
       if (savedName) {
         document.getElementById('player-name-disp').innerText = savedName;
       }
 
-      // 2. 保存されたアイコン画像の復元
+      // アイコン復元
       const savedIcon = localStorage.getItem('yururon_user_icon');
       if (savedIcon) {
         showIconImage(savedIcon);
+      }
+
+      // ランキング初期化
+      if (!localStorage.getItem('yururon_ranking')) {
+        localStorage.setItem('yururon_ranking', JSON.stringify(defaultRanking));
       }
     });
 
@@ -238,7 +249,6 @@
       const file = e.target.files[0];
       if (!file) return;
 
-      // localStorageの容量制限（約5MB）対策のため1MB以下に制限
       if (file.size > 1024 * 1024) {
         openNoticeModal("エラー", "画像サイズが大きすぎます（1MB以下の画像を選んでください）");
         return;
@@ -247,11 +257,7 @@
       const reader = new FileReader();
       reader.onload = function(evt) {
         const base64Image = evt.target.result;
-
-        // 1. 画面表示の更新
         showIconImage(base64Image);
-
-        // 2. localStorage に保存（これが肝！）
         localStorage.setItem('yururon_user_icon', base64Image);
       };
       reader.readAsDataURL(file);
@@ -272,6 +278,21 @@
         document.getElementById('player-name-disp').innerText = trimmed;
         localStorage.setItem('yururon_user_name', trimmed);
       }
+    }
+
+    // ランキングモーダル表示
+    function openRankingModal() {
+      const rankingData = JSON.parse(localStorage.getItem('yururon_ranking')) || defaultRanking;
+      let text = "【殿堂入りランキング】\n\n";
+      rankingData.forEach((item, index) => {
+        text += `${index + 1}位: ${item.name} (${item.score}pt)\n`;
+      });
+      openNoticeModal("ランキング", text);
+    }
+
+    // PLAYボタン押下処理
+    function playButtonClick() {
+      openNoticeModal("ゲーム開始", "対戦ルームへ接続中...\n（※次のゲーム画面の表示用処理をここへ繋げられます）");
     }
 
     // モーダル操作
