@@ -365,7 +365,7 @@
     window.addEventListener('click', initAudio, { once: true });
     window.addEventListener('touchstart', initAudio, { once: true });
 
-       // Socket.io 通信制御
+    // Socket.io 通信制御
     const socket = io();
     let currentRoomId = null;
     let typingTimeout = null;
@@ -377,17 +377,14 @@
     }
 
     socket.emit('auth_user', { userId: myUserId });
-    // --- ローカルストレージ（ブラウザ保存）処理 ---
+
+    // --- 初期ロード処理 ---
     window.addEventListener('DOMContentLoaded', () => {
       // 1. 保存された名前の復元
       const savedName = localStorage.getItem('yururon_user_name');
       if (savedName) {
         document.getElementById('player-name-disp').innerText = savedName;
       }
-
-    socket.on('user_data_loaded', (userData) => {
-      document.getElementById('player-name-disp').innerText = userData.name;
-      document.getElementById('match-my-info-bar').innerText = `Lv.${userData.level} ${userData.name}`;
       // 2. 保存されたアイコン画像の復元
       const savedIcon = localStorage.getItem('yururon_user_icon');
       if (savedIcon) {
@@ -395,27 +392,26 @@
       }
     });
 
+    socket.on('user_data_loaded', (userData) => {
+      document.getElementById('player-name-disp').innerText = userData.name;
+      document.getElementById('match-my-info-bar').innerText = `Lv.${userData.level} ${userData.name}`;
+    });
+
+    // 画面切り替え処理
     function showScreen(screenId) {
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.getElementById(screenId).classList.add('active');
-    // 画像選択時の処理
+    }
+
+    // アイコンアップロード
     function triggerImageUpload() {
       document.getElementById('icon-file-input').click();
     }
 
-    function openNoticeModal(title, bodyText) {
-      document.getElementById('notice-modal-header').innerText = title;
-      document.getElementById('notice-modal-body').innerText = bodyText;
-      document.getElementById('notice-modal').style.display = 'flex';
-    }
     function handleImageUpload(e) {
       const file = e.target.files[0];
       if (!file) return;
 
-    function openRuleModal() {
-      document.getElementById('rule-modal').style.display = 'flex';
-    }
-      // localStorageの容量制限（約5MB）対策のため1MB以下に制限
       if (file.size > 1024 * 1024) {
         openNoticeModal("エラー", "画像サイズが大きすぎます（1MB以下の画像を選んでください）");
         return;
@@ -424,18 +420,52 @@
       const reader = new FileReader();
       reader.onload = function(evt) {
         const base64Image = evt.target.result;
-
-    function openRankingModal() {
-      socket.emit('get_ranking');
-      document.getElementById('ranking-modal').style.display = 'flex';
-        // 1. 画面表示の更新
         showIconImage(base64Image);
-
-        // 2. localStorage に保存（これが肝！）
         localStorage.setItem('yururon_user_icon', base64Image);
       };
       reader.readAsDataURL(file);
     }
+
+    function showIconImage(src) {
+      const img = document.getElementById('custom-icon-img');
+      img.src = src;
+      img.style.display = 'block';
+      document.getElementById('fallback-text').style.display = 'none';
+    }
+
+    // 名前変更
+    function changeName() {
+      const currentName = document.getElementById('player-name-disp').innerText;
+      const newName = prompt("新しい名前を入力してください:", currentName);
+      if (newName && newName.trim() !== "") {
+        const trimmed = newName.trim();
+        document.getElementById('player-name-disp').innerText = trimmed;
+        localStorage.setItem('yururon_user_name', trimmed);
+        socket.emit('auth_user', { userId: myUserId, name: trimmed });
+      }
+    }
+
+    // モーダル処理
+    function openNoticeModal(title, bodyText) {
+      document.getElementById('notice-modal-header').innerText = title;
+      document.getElementById('notice-modal-body').innerText = bodyText;
+      document.getElementById('notice-modal').style.display = 'flex';
+    }
+
+    function openRuleModal() {
+      document.getElementById('rule-modal').style.display = 'flex';
+    }
+
+    function openRankingModal() {
+      socket.emit('get_ranking');
+      document.getElementById('ranking-modal').style.display = 'flex';
+    }
+
+    function closeModal(modalId) {
+      document.getElementById(modalId).style.display = 'none';
+    }
+
+    // マッチング＆対戦処理
     function startMatching() {
       const name = document.getElementById('player-name-disp').innerText;
       socket.emit('join_match', { name: name });
@@ -475,6 +505,7 @@
       }
     }
 
+    // Socket イベント受領
     socket.on('match_found', (data) => {
       currentRoomId = data.roomId;
       document.getElementById('match-countdown-banner').innerText = "MATCH FOUND!";
