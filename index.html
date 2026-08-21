@@ -76,7 +76,6 @@
     #icon-file-input { display: none; }
 
     #user-info-text { display: flex; flex-direction: column; }
-    #game-title { font-size: 70px; font-weight: bold; margin: 0; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); color: #FFFFFF; }
     #user-badge { font-size: 13px; font-weight: bold; opacity: 0.9; color: #FFFFFF; }
     #icon-item-label { font-size: 11px; background: #FFFFFF; color: #31A07B; padding: 2px 8px; border-radius: 10px; font-weight: bold; margin-top: 4px; width: fit-content; cursor: pointer; }
 
@@ -194,7 +193,6 @@
 <body>
 
   <!-- メニュー画面 -->
-  <h1 id="game-title">ゆるろん</h1>
   <div id="menu-screen" class="screen active">
     <div id="user-profile-area">
       <div id="user-icon-slot" onclick="playButtonSound(); triggerImageUpload()" title="クリックして写真をアップロード！">
@@ -214,9 +212,7 @@
       <button class="side-btn btn-rule" onclick="playButtonSound(); openRuleModal()">RULE</button>
     </div>
 
-    <div id="vs-logo-container">
-      <div class="vs-bubble">VS</div>
-    </div>
+　
     
     <div id="display-box">STATUS : READY</div>
 
