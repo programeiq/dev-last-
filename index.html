@@ -209,7 +209,7 @@
 
       <div id="user-info-text">
         <div id="user-badge">プレイヤー: <span id="player-name-disp">名無し</span></div>
-        <div id="user-level">Lv:"item.level"</div>
+        <div id="user-level"></div>
       </div>
     </div>
   <div id="title">
@@ -391,7 +391,7 @@
       if (savedName) {
         document.getElementById('player-name-disp').innerText = savedName;
         // サーバーにも保存済みの名前を反映
-        socket.emit('auth_user', { userId: myUserId, name: savedName });
+        socket.emit('auth_user', { userId: myUserId, name: savedName});
       }
 
       // 2. 保存されたアイコン画像の復元
@@ -610,6 +610,7 @@
       html += `</tbody></table>`;
       body.innerHTML = html;
     });
+    document.getElementById('user-level').innerText=(userData.level)
   </script>
 </body>
 </html>
