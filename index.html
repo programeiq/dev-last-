@@ -605,6 +605,12 @@
           <td>Lv.${item.level}</td>
           <td>${item.wins}勝</td>
         </tr>`;
+
+      const myData = list.find(item => item.id === myUserId);
+      
+      if (myData) {
+        document.getElementById('user-level').textContent = `Lv.${myData.level}`;
+      }
       });
 
       html += `</tbody></table>`;
